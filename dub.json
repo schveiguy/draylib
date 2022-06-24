@@ -1,0 +1,16 @@
+{
+	"authors": [
+		"Steven Schveighoffer",
+		"Doigt",
+		"raysan5 (original raylib implementation)"
+	],
+	"copyright": "tbd",
+	"description": "A D port of raylib",
+	"license": "tbd",
+	"name": "draylib",
+	"libs": [ "raylib" ],
+	"lflags": [
+		"-Llibraylib.a",
+		"-L./raylib/raylib.h"
+	]
+}
