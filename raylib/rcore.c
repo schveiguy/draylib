@@ -482,7 +482,9 @@ typedef struct CoreData {
 //----------------------------------------------------------------------------------
 // Global Variables Definition
 //----------------------------------------------------------------------------------
-static CoreData CORE = { 0 };               // Global CORE state context
+//static CoreData CORE = { 0 };               // Global CORE state context
+extern CoreData *_getCoreData(); // use from D side
+#define CORE (*_getCoreData())
 
 static char **dirFilesPath = NULL;          // Store directory files paths as strings
 static int dirFileCount = 0;                // Count directory files strings

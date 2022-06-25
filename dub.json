@@ -1,16 +1,19 @@
 {
 	"authors": [
-		"Steven Schveighoffer",
+		"Steven Schveighoffer (@schveiguy)",
 		"Doigt",
-		"raysan5 (original raylib implementation)"
+		"Ramon Santamaria (@raysan5)"
 	],
-	"copyright": "tbd",
-	"description": "A D port of raylib",
-	"license": "tbd",
+	"copyright": "(c) 2013-2022 Ramon Santamaria, (c) 2022+ Steven Schveighoffer Doigt",
+	"description": "A D port of raylib, with D niceties",
+	"license": "Zlib",
 	"name": "draylib",
-	"libs": [ "raylib" ],
-	"lflags": [
-		"-Llibraylib.a",
-		"-L./raylib/raylib.h"
+        "dependencies" : {
+            "bindbc-glfw" : "~>1.0.0"
+        },
+        "buildOptions" : [ "betterC" ],
+	"extraDependencyFiles": [ "raylib/*.o" ],
+	"dflags": [
+"raylib/raudio.o", "raylib/rglfw.o", "raylib/rshapes.o", "raylib/rtextures.o", "raylib/rcore.o", "raylib/rmodels.o", "raylib/rtext.o", "raylib/utils.o"
 	]
 }

@@ -13,5 +13,7 @@ draylib-test-*
 *.o
 *.obj
 *.lst
-source/app.d
-libraylib.a
+libdraylib.a
+.*.swp
+raylib/*.o
+raylib/libraylib.a
