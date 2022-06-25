@@ -598,8 +598,8 @@ extern void UnloadFontDefault(void);        // [Module: text] Unloads default fo
 //----------------------------------------------------------------------------------
 // Module specific Functions Declaration
 //----------------------------------------------------------------------------------
-static void InitTimer(void);                            // Initialize timer (hi-resolution if available)
-static bool InitGraphicsDevice(int width, int height);  // Initialize graphics device
+void InitTimer(void);                            // Initialize timer (hi-resolution if available)
+bool InitGraphicsDevice(int width, int height);  // Initialize graphics device
 static void SetupFramebuffer(int width, int height);    // Setup main framebuffer
 static void SetupViewport(int width, int height);       // Set viewport for a provided width and height
 
@@ -696,6 +696,7 @@ struct android_app *GetAndroidApp(void)
 
 // Initialize window and OpenGL context
 // NOTE: data parameter could be used to pass any kind of required data to the initialization
+#if 0
 void InitWindow(int width, int height, const char *title)
 {
     TRACELOG(LOG_INFO, "Initializing raylib %s", RAYLIB_VERSION);
@@ -856,6 +857,7 @@ void InitWindow(int width, int height, const char *title)
 
 #endif        // PLATFORM_DESKTOP || PLATFORM_WEB || PLATFORM_RPI || PLATFORM_DRM
 }
+#endif
 
 // Close window and unload OpenGL context
 void CloseWindow(void)
@@ -3700,7 +3702,7 @@ int GetTouchPointCount(void)
 // NOTE: width and height represent the screen (framebuffer) desired size, not actual display size
 // If width or height are 0, default display size will be used for framebuffer size
 // NOTE: returns false in case graphic device could not be created
-static bool InitGraphicsDevice(int width, int height)
+bool InitGraphicsDevice(int width, int height)
 {
     CORE.Window.screen.width = width;            // User desired width
     CORE.Window.screen.height = height;          // User desired height
@@ -4560,7 +4562,7 @@ static void SetupFramebuffer(int width, int height)
 }
 
 // Initialize hi-resolution timer
-static void InitTimer(void)
+void InitTimer(void)
 {
 // Setting a higher resolution can improve the accuracy of time-out intervals in wait functions.
 // However, it can also reduce overall system performance, because the thread scheduler switches tasks more often.
