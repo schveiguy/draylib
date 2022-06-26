@@ -1324,7 +1324,7 @@ version(none)
 //#endif
 
 //#if defined(PLATFORM_DRM)
-version (none)
+version(none)
 {
     if (CORE.Window.prevFB)
     {
