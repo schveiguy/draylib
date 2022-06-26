@@ -861,7 +861,7 @@ void InitWindow(int width, int height, const char *title)
 #endif
 
 // Close window and unload OpenGL context
-void CloseWindow(void)
+/*void CloseWindow(void)
 {
 #if defined(SUPPORT_GIF_RECORDING)
     if (gifRecording)
@@ -1006,7 +1006,7 @@ void CloseWindow(void)
 
     CORE.Window.ready = false;
     TRACELOG(LOG_INFO, "Window closed successfully");
-}
+}*/
 
 // Check if KEY_ESCAPE pressed or Close icon pressed
 bool WindowShouldClose(void)
