@@ -3,7 +3,6 @@ import bindbc.glfw;
 import raylib;
 import raylib.config;
 
-extern(C):
 // port of rcore.c
 //
 enum MAX_KEYBOARD_KEYS = 512;        // Maximum number of keyboard keys supported
@@ -15,12 +14,17 @@ enum MAX_TOUCH_POINTS = 8;           // Maximum number of touch points supported
 enum MAX_KEY_PRESSED_QUEUE = 16;     // Maximum number of keys in the key input queue
 enum MAX_CHAR_PRESSED_QUEUE = 16;    // Maximum number of characters in the char input queue
 
+version(all) { // #if defined(SUPPORT_DEFAULT_FONT)
+    extern(C) void LoadFontDefault();          // [Module: text] Loads default font on InitWindow()
+    extern(C) void UnloadFontDefault();        // [Module: text] Unloads default font from GPU memory
+}
+
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
 //----------------------------------------------------------------------------------
 version(none) // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
 {
-    struct InputEventWorker{
+    private struct InputEventWorker{
 
         pthread_t threadId;             // Event reading thread id
         int fd;                         // File descriptor to the device it is assigned to
@@ -35,12 +39,12 @@ version(none) // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
     }
 }
 
-struct Point {
+private struct Point {
     int x;
     int y;
 }
 
-struct Size {
+private struct Size {
     uint width;
     uint height;
 }
@@ -59,7 +63,7 @@ private struct CoreData {
                 int fd;                             // File descriptor for /dev/dri/...
                 drmModeConnector *connector;        // Direct Rendering Manager (DRM) mode connector
                 drmModeCrtc *crtc;                  // CRT Controller
-                int modeIndex;                      // Index of the used mode of connector->modes
+                int modeIndex;                      // Index of the used mode of connector.modes
                 /*struct*/ gbm_device *gbmDevice;       // GBM device
                 /*struct*/ gbm_surface *gbmSurface;     // GBM surface
                 /*struct*/ gbm_bo *prevBO;              // Previous GBM buffer object (during frame swapping)
@@ -70,7 +74,7 @@ private struct CoreData {
             EGLContext context;                 // Graphic context, mode in which drawing can be done
             EGLConfig config;                   // Graphic config
         }
-        const char *title;                  // Window text title const pointer
+        const(char)* title;                  // Window text title const pointer
         uint flags;                 // Configuration flags (bit based), keeps window state
         bool ready;                         // Check if window has been initialized successfully
         bool fullscreen;                    // Check if fullscreen mode is enabled
@@ -98,7 +102,7 @@ private struct CoreData {
         } _Android Android;
     }
     struct _Storage {
-        const char *basePath;               // Base path for data storage
+        const(char) *basePath;               // Base path for data storage
     } _Storage Storage;
     struct _Input {
         version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
@@ -184,3 +188,170 @@ private __gshared CoreData CORE;
 private extern(C) CoreData *_getCoreData() {
     return &CORE;
 }
+
+extern(C) void InitWindow(int width, int height, const(char)*title)
+{
+    TraceLog(TraceLogLevel.LOG_INFO, "Initializing raylib %s", RAYLIB_VERSION.ptr);
+
+    if ((title != null) && (title[0] != 0)) CORE.Window.title = title;
+
+    // Initialize required global values different than 0
+    CORE.Input.Keyboard.exitKey = KeyboardKey.KEY_ESCAPE;
+    CORE.Input.Mouse.scale = Vector2(1.0f, 1.0f);
+    CORE.Input.Mouse.cursor = MouseCursor.MOUSE_CURSOR_ARROW;
+    CORE.Input.Gamepad.lastButtonPressed = -1;
+
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        CORE.Window.screen.width = width;
+        CORE.Window.screen.height = height;
+        CORE.Window.currentFbo.width = width;
+        CORE.Window.currentFbo.height = height;
+
+        // Set desired windows flags before initializing anything
+        ANativeActivity_setWindowFlags(CORE.Android.app.activity, AWINDOW_FLAG_FULLSCREEN, 0);  //AWINDOW_FLAG_SCALED, AWINDOW_FLAG_DITHER
+
+        int orientation = AConfiguration_getOrientation(CORE.Android.app.config);
+
+        if (orientation == ACONFIGURATION_ORIENTATION_PORT) TraceLog(TraceLogLevel.LOG_INFO, "ANDROID: Window orientation set as portrait");
+        else if (orientation == ACONFIGURATION_ORIENTATION_LAND) TraceLog(TraceLogLevel.LOG_INFO, "ANDROID: Window orientation set as landscape");
+
+        // TODO: Automatic orientation doesn't seem to work
+        if (width <= height)
+        {
+            AConfiguration_setOrientation(CORE.Android.app.config, ACONFIGURATION_ORIENTATION_PORT);
+            TraceLog(TraceLogLevel.LOG_WARNING, "ANDROID: Window orientation changed to portrait");
+        }
+        else
+        {
+            AConfiguration_setOrientation(CORE.Android.app.config, ACONFIGURATION_ORIENTATION_LAND);
+            TraceLog(TraceLogLevel.LOG_WARNING, "ANDROID: Window orientation changed to landscape");
+        }
+
+        //AConfiguration_getDensity(CORE.Android.app.config);
+        //AConfiguration_getKeyboard(CORE.Android.app.config);
+        //AConfiguration_getScreenSize(CORE.Android.app.config);
+        //AConfiguration_getScreenLong(CORE.Android.app.config);
+
+        // Initialize App command system
+        // NOTE: On APP_CMD_INIT_WINDOW -> InitGraphicsDevice(), InitTimer(), LoadFontDefault()...
+        CORE.Android.app.onAppCmd = AndroidCommandCallback;
+
+        // Initialize input events system
+        CORE.Android.app.onInputEvent = AndroidInputCallback;
+
+        // Initialize assets manager
+        InitAssetManager(CORE.Android.app.activity.assetManager, CORE.Android.app.activity.internalDataPath);
+
+        // Initialize base path for storage
+        CORE.Storage.basePath = CORE.Android.app.activity.internalDataPath;
+
+        TraceLog(TraceLogLevel.LOG_INFO, "ANDROID: App initialized successfully");
+
+        // Android ALooper_pollAll() variables
+        int pollResult = 0;
+        int pollEvents = 0;
+
+        // Wait for window to be initialized (display and context)
+        while (!CORE.Window.ready)
+        {
+            // Process events loop
+            while ((pollResult = ALooper_pollAll(0, null, &pollEvents, cast(void**)&CORE.Android.source)) >= 0)
+            {
+                // Process this event
+                if (CORE.Android.source != null) CORE.Android.source.process(CORE.Android.app, CORE.Android.source);
+
+                // NOTE: Never close window, native activity is controlled by the system!
+                //if (CORE.Android.app.destroyRequested != 0) CORE.Window.shouldClose = true;
+            }
+        }
+    }
+    version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        // Initialize graphics device (display device and OpenGL context)
+        // NOTE: returns true if window and graphic device has been initialized successfully
+        CORE.Window.ready = InitGraphicsDevice(width, height);
+
+        // If graphic device is no properly initialized, we end program
+        if (!CORE.Window.ready)
+        {
+            TraceLog(TraceLogLevel.LOG_FATAL, "Failed to initialize Graphic Device");
+            return;
+        }
+
+        // Initialize hi-res timer
+        InitTimer();
+
+        // Initialize random seed
+        import core.stdc.time : time;
+        import core.stdc.stdlib : srand;
+        srand(cast(uint)time(null));
+
+        // Initialize base path for storage
+        CORE.Storage.basePath = GetWorkingDirectory();
+
+        version(all) { // #if defined(SUPPORT_DEFAULT_FONT)
+            // Load default font
+            // NOTE: External functions (defined in module: text)
+            LoadFontDefault();
+            Rectangle rec = GetFontDefault().recs[95];
+            // NOTE: We setup a 1px padding on char rectangle to avoid pixel bleeding on MSAA filtering
+            SetShapesTexture(GetFontDefault().texture, Rectangle(rec.x + 1, rec.y + 1, rec.width - 2, rec.height - 2));
+        } else {
+            // Set default texture and rectangle to be used for shapes drawing
+            // NOTE: rlgl default texture is a 1x1 pixel UNCOMPRESSED_R8G8B8A8
+            Texture2D texture = Texture2D(rlGetTextureIdDefault(), 1, 1, 1, PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+            SetShapesTexture(texture, Rectangle(0.0f, 0.0f, 1.0f, 1.0f));
+        }
+        version(all) { // #if defined(PLATFORM_DESKTOP)
+            if ((CORE.Window.flags & ConfigFlags.FLAG_WINDOW_HIGHDPI) > 0)
+            {
+                // Set default font texture filter for HighDPI (blurry)
+                SetTextureFilter(GetFontDefault().texture, TextureFilter.TEXTURE_FILTER_BILINEAR);
+            }
+        }
+
+        version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+            // Initialize raw input system
+            InitEvdevInput();   // Evdev inputs initialization
+            InitGamepad();      // Gamepad init
+            InitKeyboard();     // Keyboard init (stdin)
+        }
+
+        version(none) { // #if defined(PLATFORM_WEB)
+            // Check fullscreen change events(note this is done on the window since most browsers don't support this on #canvas)
+            //emscripten_set_fullscreenchange_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, null, 1, EmscriptenResizeCallback);
+            // Check Resize event (note this is done on the window since most browsers don't support this on #canvas)
+            emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, null, 1, EmscriptenResizeCallback);
+            // Trigger this once to get initial window sizing
+            EmscriptenResizeCallback(EMSCRIPTEN_EVENT_RESIZE, null, null);
+            // Support keyboard events
+            //emscripten_set_keypress_callback("#canvas", null, 1, EmscriptenKeyboardCallback);
+            //emscripten_set_keydown_callback("#canvas", null, 1, EmscriptenKeyboardCallback);
+
+            // Support mouse events
+            emscripten_set_click_callback("#canvas", null, 1, EmscriptenMouseCallback);
+
+            // Support touch events
+            emscripten_set_touchstart_callback("#canvas", null, 1, EmscriptenTouchCallback);
+            emscripten_set_touchend_callback("#canvas", null, 1, EmscriptenTouchCallback);
+            emscripten_set_touchmove_callback("#canvas", null, 1, EmscriptenTouchCallback);
+            emscripten_set_touchcancel_callback("#canvas", null, 1, EmscriptenTouchCallback);
+
+            // Support gamepad events (not provided by GLFW3 on emscripten)
+            emscripten_set_gamepadconnected_callback(null, 1, EmscriptenGamepadCallback);
+            emscripten_set_gamepaddisconnected_callback(null, 1, EmscriptenGamepadCallback);
+        }
+
+        CORE.Input.Mouse.currentPosition.x = CORE.Window.screen.width/2.0f;
+        CORE.Input.Mouse.currentPosition.y = CORE.Window.screen.height/2.0f;
+
+        version(none) { // #if defined(SUPPORT_EVENTS_AUTOMATION)
+            events = cast(AutomationEvent *)malloc(MAX_CODE_AUTOMATION_EVENTS*AuthomationEvent.sizeof);
+            CORE.Time.frameCounter = 0;
+        }
+
+    }        // PLATFORM_DESKTOP || PLATFORM_WEB || PLATFORM_RPI || PLATFORM_DRM
+}
+
+// TODO: move impl to D
+extern(C) bool InitGraphicsDevice(int width, int height);
+extern(C) void InitTimer();
