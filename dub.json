@@ -11,9 +11,15 @@
         "dependencies" : {
             "bindbc-glfw" : "~>1.0.0"
         },
+        "subConfigurations" :  {
+            "bindbc-glfw" : "staticBC"
+        },
         "buildOptions" : [ "betterC" ],
 	"extraDependencyFiles": [ "raylib/*.o" ],
 	"dflags": [
 "raylib/raudio.o", "raylib/rglfw.o", "raylib/rshapes.o", "raylib/rtextures.o", "raylib/rcore.o", "raylib/rmodels.o", "raylib/rtext.o", "raylib/utils.o"
-	]
+	],
+        "versions": [
+            "GLFW_33"
+        ]
 }
