@@ -79,7 +79,7 @@ module raylib;
 import core.stdc.config;
 import core.stdc.stdarg;
 
-extern (C):
+extern (C) @nogc nothrow:
 
 // Required for: va_list - Only used by TraceLogCallback
 
@@ -108,8 +108,34 @@ enum RAD2DEG = 180.0f / PI;
 // this defines are very useful for internal check and avoid type (re)definitions
 
 // Some Basic Colors
-// TODO: hand-port colors
-// NOTE: Custom raylib color palette for amazing visuals on WHITE background // Light Gray // Gray // Dark Gray // Yellow // Gold // Orange // Pink // Red // Maroon // Green // Lime // Dark Green // Sky Blue // Blue // Dark Blue // Purple // Violet // Dark Purple // Beige // Brown // Dark Brown // White // Black // Blank (Transparent) // Magenta // My own White (raylib logo)
+// NOTE: Custom raylib color palette for amazing visuals on WHITE background
+enum LIGHTGRAY  = Color( 200, 200, 200, 255 );   // Light Gray
+enum GRAY       = Color( 130, 130, 130, 255 );   // Gray
+enum DARKGRAY   = Color( 80, 80, 80, 255 );      // Dark Gray
+enum YELLOW     = Color( 253, 249, 0, 255 );     // Yellow
+enum GOLD       = Color( 255, 203, 0, 255 );     // Gold
+enum ORANGE     = Color( 255, 161, 0, 255 );     // Orange
+enum PINK       = Color( 255, 109, 194, 255 );   // Pink
+enum RED        = Color( 230, 41, 55, 255 );     // Red
+enum MAROON     = Color( 190, 33, 55, 255 );     // Maroon
+enum GREEN      = Color( 0, 228, 48, 255 );      // Green
+enum LIME       = Color( 0, 158, 47, 255 );      // Lime
+enum DARKGREEN  = Color( 0, 117, 44, 255 );      // Dark Green
+enum SKYBLUE    = Color( 102, 191, 255, 255 );   // Sky Blue
+enum BLUE       = Color( 0, 121, 241, 255 );     // Blue
+enum DARKBLUE   = Color( 0, 82, 172, 255 );      // Dark Blue
+enum PURPLE     = Color( 200, 122, 255, 255 );   // Purple
+enum VIOLET     = Color( 135, 60, 190, 255 );    // Violet
+enum DARKPURPLE = Color( 112, 31, 126, 255 );    // Dark Purple
+enum BEIGE      = Color( 211, 176, 131, 255 );   // Beige
+enum BROWN      = Color( 127, 106, 79, 255 );    // Brown
+enum DARKBROWN  = Color( 76, 63, 47, 255 );      // Dark Brown
+
+enum WHITE      = Color( 255, 255, 255, 255 );   // White
+enum BLACK      = Color( 0, 0, 0, 255 );         // Black
+enum BLANK      = Color( 0, 0, 0, 0 );           // Blank (Transparent)
+enum MAGENTA    = Color( 255, 0, 255, 255 );     // Magenta
+enum RAYWHITE   = Color( 245, 245, 245, 255 );   // My own White (raylib logo)
 
 //----------------------------------------------------------------------------------
 // Structures Definition
