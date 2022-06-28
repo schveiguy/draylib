@@ -4,6 +4,7 @@ import raylib;
 import raylib.config;
 import raylib.raymath;
 import raylib.rlgl;
+import core.stdc.stdlib;
 
 // port of rcore.c
 //
@@ -191,7 +192,6 @@ private extern(C) CoreData *_getCoreData() {
     return &CORE;
 }
 
-<<<<<<< HEAD
 extern(C) void InitWindow(int width, int height, const(char)*title) nothrow @nogc
 {
     TraceLog(TraceLogLevel.LOG_INFO, "Initializing raylib (D port) %s", RAYLIB_VERSION.ptr);
@@ -213,11 +213,6 @@ extern(C) void InitWindow(int width, int height, const(char)*title) nothrow @nog
             exit(1);
         }
     }+/
-=======
-extern(C) void InitWindow(int width, int height, const(char)*title)
-{
-    TraceLog(TraceLogLevel.LOG_INFO, "Initializing raylib %s", RAYLIB_VERSION.ptr);
->>>>>>> 34dd96d (Update rcore.d)
 
     if ((title != null) && (title[0] != 0)) CORE.Window.title = title;
 
@@ -378,7 +373,6 @@ extern(C) void InitWindow(int width, int height, const(char)*title)
     }        // PLATFORM_DESKTOP || PLATFORM_WEB || PLATFORM_RPI || PLATFORM_DRM
 }
 
-<<<<<<< HEAD
 extern(C) private bool InitGraphicsDevice(int width, int height) nothrow @nogc
 {
     CORE.Window.screen.width = width;            // User desired width
@@ -1265,8 +1259,6 @@ private extern(C) void MouseButtonCallback(GLFWwindow *window, int button, int a
 private extern(C) void MouseCursorPosCallback(GLFWwindow *window, double x, double y) nothrow @nogc;
 private extern(C) void SetupViewport(int width, int height) nothrow @nogc;
 
-=======
->>>>>>> 34dd96d (Update rcore.d)
 extern(C) void CloseWindow()
 {
 //#if defined(SUPPORT_GIF_RECORDING)
@@ -1424,5 +1416,5 @@ version(all)
 //#endif
 
     CORE.Window.ready = false;
-    TraceLog(LOG_INFO, "Window closed successfully".ptr);
+    TraceLog(TraceLogLevel.LOG_INFO, "Window closed successfully".ptr);
 }
