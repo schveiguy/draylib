@@ -1418,3 +1418,5 @@ version(all)
     CORE.Window.ready = false;
     TraceLog(TraceLogLevel.LOG_INFO, "Window closed successfully".ptr);
 }
+// TODO: this one is actually from rlgl.c / rlgl.h and will need to be moved once ported over
+extern(C) void rlglClose();
