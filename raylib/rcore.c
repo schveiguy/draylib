@@ -483,8 +483,8 @@ typedef struct CoreData {
 // Global Variables Definition
 //----------------------------------------------------------------------------------
 //static CoreData CORE = { 0 };               // Global CORE state context
-extern CoreData *_getCoreData(); // use from D side
-#define CORE (*_getCoreData())
+extern CoreData *_get_CORE(); // use from D side
+#define CORE (*_get_CORE())
 
 static char **dirFilesPath = NULL;          // Store directory files paths as strings
 static int dirFileCount = 0;                // Count directory files strings
@@ -494,9 +494,15 @@ static int screenshotCounter = 0;           // Screenshots counter
 #endif
 
 #if defined(SUPPORT_GIF_RECORDING)
-static int gifFrameCounter = 0;            // GIF frames counter
-static bool gifRecording = false;           // GIF recording state
-static MsfGifState gifState = { 0 };        // MSGIF context state
+//static int gifFrameCounter = 0;            // GIF frames counter
+extern int *_get_gifFrameCounter();           // use from D side
+#define gifFrameCounter (*_get_gifFrameCounter())
+//static bool gifRecording = false;           // GIF recording state
+extern int *_get_gifRecording();           // use from D side
+#define gifRecording (*_get_gifRecording())
+//static MsfGifState gifState = { 0 };        // MSGIF context state
+extern MsfGifState* _get_gifState();        // MSGIF context state
+#define gifState (*_get_gifState())
 #endif
 
 #if defined(SUPPORT_EVENTS_AUTOMATION)
@@ -861,7 +867,8 @@ void InitWindow(int width, int height, const char *title)
 #endif
 
 // Close window and unload OpenGL context
-/*void CloseWindow(void)
+#if 0 // in D
+void CloseWindow(void)
 {
 #if defined(SUPPORT_GIF_RECORDING)
     if (gifRecording)
@@ -1006,7 +1013,8 @@ void InitWindow(int width, int height, const char *title)
 
     CORE.Window.ready = false;
     TRACELOG(LOG_INFO, "Window closed successfully");
-}*/
+}
+#endif
 
 // Check if KEY_ESCAPE pressed or Close icon pressed
 bool WindowShouldClose(void)

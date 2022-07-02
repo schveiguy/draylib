@@ -5,6 +5,7 @@ import raylib.config;
 import raylib.raymath;
 import raylib.rlgl;
 import core.stdc.stdlib;
+import raylib.external.msf_gif;
 
 // port of rcore.c
 //
@@ -186,11 +187,19 @@ private struct CoreData {
     } _Time Time;
 }
 
-// provide API to 
-private __gshared CoreData CORE;
-private extern(C) CoreData *_getCoreData() {
-    return &CORE;
+// easy way to export for C
+mixin template ExportForC(string item) {
+    mixin(`private extern(C) auto _get_` ~ item ~ `() { return &` ~ item ~ `;}`);
 }
+
+private __gshared CoreData CORE;
+mixin ExportForC!"CORE";
+private __gshared int gifFrameCounter = 0;
+mixin ExportForC!"gifFrameCounter";
+private __gshared bool gifRecording = false;
+mixin ExportForC!"gifRecording";
+private __gshared MsfGifState gifState;
+mixin ExportForC!"gifState";
 
 extern(C) void InitWindow(int width, int height, const(char)*title) nothrow @nogc
 {
@@ -1389,7 +1398,7 @@ extern(C) void CloseWindow()
         if (CORE.Input.Gamepad.threadId) pthread_join(CORE.Input.Gamepad.threadId, NULL);
     }
 
-    version(all) { //#if defined(SUPPORT_EVENTS_AUTOMATION)
+    version(none) { //#if defined(SUPPORT_EVENTS_AUTOMATION)
         free(events);
     }
 
