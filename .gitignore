@@ -17,3 +17,4 @@ libdraylib.a
 .*.swp
 raylib/*.o
 raylib/libraylib.a
+libBindBC_GLFW.a
