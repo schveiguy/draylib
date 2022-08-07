@@ -4,6 +4,8 @@ import raylib;
 import raylib.config;
 import raylib.raymath;
 import raylib.rlgl;
+import core.stdc.stdlib;
+import raylib.external.msf_gif;
 
 // port of rcore.c
 //
@@ -185,11 +187,19 @@ private struct CoreData {
     } _Time Time;
 }
 
-// provide API to 
-private __gshared CoreData CORE;
-private extern(C) CoreData *_getCoreData() {
-    return &CORE;
+// easy way to export for C
+mixin template ExportForC(string item) {
+    mixin(`private extern(C) auto _get_` ~ item ~ `() { return &` ~ item ~ `;}`);
 }
+
+private __gshared CoreData CORE;
+mixin ExportForC!"CORE";
+private __gshared int gifFrameCounter = 0;
+mixin ExportForC!"gifFrameCounter";
+private __gshared bool gifRecording = false;
+mixin ExportForC!"gifRecording";
+private __gshared MsfGifState gifState;
+mixin ExportForC!"gifState";
 
 extern(C) void InitWindow(int width, int height, const(char)*title) nothrow @nogc
 {
@@ -1249,6 +1259,152 @@ private extern(C) void CursorEnterCallback(GLFWwindow *window, int enter) nothro
     else CORE.Input.Mouse.cursorOnScreen = false;
 }
 
+
+extern(C) void CloseWindow()
+{
+    version(all) { //#if defined(SUPPORT_GIF_RECORDING)
+        if (gifRecording)
+        {
+            MsfGifResult result = msf_gif_end(&gifState);
+            msf_gif_free(result);
+            gifRecording = false;
+        }
+    }
+
+    version(all) { //#if defined(SUPPORT_DEFAULT_FONT)
+        UnloadFontDefault();
+    }
+
+    rlglClose();                // De-init rlgl
+
+    version(all) { //#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+        glfwDestroyWindow(CORE.Window.handle);
+        glfwTerminate();
+    }
+
+    version(Win32) { //#if defined(_WIN32) && defined(SUPPORT_WINMM_HIGHRES_TIMER) && !defined(SUPPORT_BUSY_WAIT_LOOP)
+        timeEndPeriod(1);           // Restore time period
+    }
+
+    version(none) { //#if defined(PLATFORM_ANDROID) || defined(PLATFORM_RPI)
+        // Close surface, context and display
+        if (CORE.Window.device != EGL_NO_DISPLAY)
+        {
+            eglMakeCurrent(CORE.Window.device, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
+            if (CORE.Window.surface != EGL_NO_SURFACE)
+            {
+                eglDestroySurface(CORE.Window.device, CORE.Window.surface);
+                CORE.Window.surface = EGL_NO_SURFACE;
+            }
+
+            if (CORE.Window.context != EGL_NO_CONTEXT)
+            {
+                eglDestroyContext(CORE.Window.device, CORE.Window.context);
+                CORE.Window.context = EGL_NO_CONTEXT;
+            }
+
+            eglTerminate(CORE.Window.device);
+            CORE.Window.device = EGL_NO_DISPLAY;
+        }
+    }
+
+    version(none) { //#if defined(PLATFORM_DRM)
+        if (CORE.Window.prevFB)
+        {
+            drmModeRmFB(CORE.Window.fd, CORE.Window.prevFB);
+            CORE.Window.prevFB = 0;
+        }
+
+        if (CORE.Window.prevBO)
+        {
+            gbm_surface_release_buffer(CORE.Window.gbmSurface, CORE.Window.prevBO);
+            CORE.Window.prevBO = NULL;
+        }
+
+        if (CORE.Window.gbmSurface)
+        {
+            gbm_surface_destroy(CORE.Window.gbmSurface);
+            CORE.Window.gbmSurface = NULL;
+        }
+
+        if (CORE.Window.gbmDevice)
+        {
+            gbm_device_destroy(CORE.Window.gbmDevice);
+            CORE.Window.gbmDevice = NULL;
+        }
+
+        if (CORE.Window.crtc)
+        {
+            if (CORE.Window.connector)
+            {
+                drmModeSetCrtc(CORE.Window.fd, CORE.Window.crtc.crtc_id, CORE.Window.crtc.buffer_id,
+                               CORE.Window.crtc.x, CORE.Window.crtc.y, &CORE.Window.connector.connector_id, 1, &CORE.Window.crtc.mode);
+                drmModeFreeConnector(CORE.Window.connector);
+                CORE.Window.connector = NULL;
+            }
+
+            drmModeFreeCrtc(CORE.Window.crtc);
+            CORE.Window.crtc = NULL;
+        }
+
+        if (CORE.Window.fd != -1)
+        {
+            close(CORE.Window.fd);
+            CORE.Window.fd = -1;
+        }
+
+        // Close surface, context and display
+        if (CORE.Window.device != EGL_NO_DISPLAY)
+        {
+            if (CORE.Window.surface != EGL_NO_SURFACE)
+            {
+                eglDestroySurface(CORE.Window.device, CORE.Window.surface);
+                CORE.Window.surface = EGL_NO_SURFACE;
+            }
+
+            if (CORE.Window.context != EGL_NO_CONTEXT)
+            {
+                eglDestroyContext(CORE.Window.device, CORE.Window.context);
+                CORE.Window.context = EGL_NO_CONTEXT;
+            }
+
+            eglTerminate(CORE.Window.device);
+            CORE.Window.device = EGL_NO_DISPLAY;
+        }
+    }
+
+    version(none) { //#if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        // Wait for mouse and gamepad threads to finish before closing
+        // NOTE: Those threads should already have finished at this point
+        // because they are controlled by CORE.Window.shouldClose variable
+        CORE.Window.shouldClose = true;   // Added to force threads to exit when the close window is called
+
+        // Close the evdev keyboard
+        if (CORE.Input.Keyboard.fd != -1)
+        {
+            close(CORE.Input.Keyboard.fd);
+            CORE.Input.Keyboard.fd = -1;
+        }
+
+        for (int i = 0; i < sizeof(CORE.Input.eventWorker)/sizeof(InputEventWorker); ++i)
+        {
+            if (CORE.Input.eventWorker[i].threadId)
+            {
+                pthread_join(CORE.Input.eventWorker[i].threadId, NULL);
+            }
+        }
+
+        if (CORE.Input.Gamepad.threadId) pthread_join(CORE.Input.Gamepad.threadId, NULL);
+    }
+
+    version(none) { //#if defined(SUPPORT_EVENTS_AUTOMATION)
+        free(events);
+    }
+
+    CORE.Window.ready = false;
+    TraceLog(TraceLogLevel.LOG_INFO, "Window closed successfully".ptr);
+}
 
 // TODO: move impl to D
 private extern(C) void InitTimer() nothrow @nogc;
