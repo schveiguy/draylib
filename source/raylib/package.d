@@ -937,19 +937,23 @@ public import raylib.rcore : InitWindow, WindowShouldClose, CloseWindow,
 //bool IsWindowResized (); // Check if window has been resized last frame
 //bool IsWindowState (uint flag); // Check if one specific window flag is enabled
 
-void SetWindowState (uint flags); // Set window configuration state using flags
-void ClearWindowState (uint flags); // Clear window configuration state flags
-void ToggleFullscreen (); // Toggle window state: fullscreen/windowed (only PLATFORM_DESKTOP)
-void MaximizeWindow (); // Set window state: maximized, if resizable (only PLATFORM_DESKTOP)
-void MinimizeWindow (); // Set window state: minimized, if resizable (only PLATFORM_DESKTOP)
-void RestoreWindow (); // Set window state: not minimized/maximized (only PLATFORM_DESKTOP)
-void SetWindowIcon (Image image); // Set icon for window (only PLATFORM_DESKTOP)
-void SetWindowTitle (const(char)* title); // Set title for window (only PLATFORM_DESKTOP)
-void SetWindowPosition (int x, int y); // Set window position on screen (only PLATFORM_DESKTOP)
-void SetWindowMonitor (int monitor); // Set monitor for the current window (fullscreen mode)
-void SetWindowMinSize (int width, int height); // Set window minimum dimensions (for FLAG_WINDOW_RESIZABLE)
-void SetWindowSize (int width, int height); // Set window dimensions
-void* GetWindowHandle (); // Get native window handle
+public import raylib.rcore: SetWindowState, ClearWindowState, ToggleFullscreen,
+       MaximizeWindow, MinimizeWindow, RestoreWindow, SetWindowIcon,
+       SetWindowTitle, SetWindowPosition, SetWindowMonitor, SetWindowMinSize,
+       SetWindowSize, GetWindowHandle;
+//void SetWindowState (uint flags); // Set window configuration state using flags
+//void ClearWindowState (uint flags); // Clear window configuration state flags
+//void ToggleFullscreen (); // Toggle window state: fullscreen/windowed (only PLATFORM_DESKTOP)
+//void MaximizeWindow (); // Set window state: maximized, if resizable (only PLATFORM_DESKTOP)
+//void MinimizeWindow (); // Set window state: minimized, if resizable (only PLATFORM_DESKTOP)
+//void RestoreWindow (); // Set window state: not minimized/maximized (only PLATFORM_DESKTOP)
+//void SetWindowIcon (Image image); // Set icon for window (only PLATFORM_DESKTOP)
+//void SetWindowTitle (const(char)* title); // Set title for window (only PLATFORM_DESKTOP)
+//void SetWindowPosition (int x, int y); // Set window position on screen (only PLATFORM_DESKTOP)
+//void SetWindowMonitor (int monitor); // Set monitor for the current window (fullscreen mode)
+//void SetWindowMinSize (int width, int height); // Set window minimum dimensions (for FLAG_WINDOW_RESIZABLE)
+//void SetWindowSize (int width, int height); // Set window dimensions
+//void* GetWindowHandle (); // Get native window handle
 
 public import raylib.rcore : GetScreenWidth, GetScreenHeight;
 //int GetScreenWidth (); // Get current screen width

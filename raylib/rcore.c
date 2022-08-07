@@ -1230,6 +1230,7 @@ void ToggleFullscreen(void)
 }
 #endif
 
+#if 0 // in D
 // Set window state: maximized, if resizable (only PLATFORM_DESKTOP)
 void MaximizeWindow(void)
 {
@@ -1548,6 +1549,7 @@ void SetWindowSize(int width, int height)
     //emscripten_set_element_css_size("canvas", width, height);
 #endif
 }
+#endif
 
 #if 0 // in D
 // Get current screen width
@@ -1573,7 +1575,6 @@ int GetRenderHeight(void)
 {
     return CORE.Window.render.height;
 }
-#endif
 
 // Get native window handle
 void *GetWindowHandle(void)
@@ -1596,6 +1597,7 @@ void *GetWindowHandle(void)
 
     return NULL;
 }
+#endif
 
 // Get number of monitors
 int GetMonitorCount(void)
