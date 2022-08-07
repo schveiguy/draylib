@@ -1016,6 +1016,7 @@ void CloseWindow(void)
 }
 #endif
 
+#if 0 // in D
 // Check if KEY_ESCAPE pressed or Close icon pressed
 bool WindowShouldClose(void)
 {
@@ -1227,6 +1228,7 @@ void ToggleFullscreen(void)
     TRACELOG(LOG_WARNING, "SYSTEM: Failed to toggle to windowed mode");
 #endif
 }
+#endif
 
 // Set window state: maximized, if resizable (only PLATFORM_DESKTOP)
 void MaximizeWindow(void)
@@ -1547,6 +1549,7 @@ void SetWindowSize(int width, int height)
 #endif
 }
 
+#if 0 // in D
 // Get current screen width
 int GetScreenWidth(void)
 {
@@ -1570,6 +1573,7 @@ int GetRenderHeight(void)
 {
     return CORE.Window.render.height;
 }
+#endif
 
 // Get native window handle
 void *GetWindowHandle(void)
