@@ -3,9 +3,19 @@ import bindbc.glfw;
 import raylib;
 import raylib.config;
 import raylib.raymath;
+import raylib.rgestures;
 import raylib.rlgl;
 import core.stdc.stdlib;
+import core.sys.posix.sys.time;
+import std.math; // for round
 import raylib.external.msf_gif;
+
+version(Windows)
+{
+    // define windows-specific functions
+    extern(Windows) uint timeBeginPeriod(uint uPeriod);
+    extern(Windows) uint timeEndPeriod(uint uPeriod);
+}
 
 // port of rcore.c
 //
@@ -200,6 +210,10 @@ private __gshared bool gifRecording = false;
 mixin ExportForC!"gifRecording";
 private __gshared MsfGifState gifState;
 mixin ExportForC!"gifState";
+version(all) { // #if defined(SUPPORT_SCREEN_CAPTURE)
+    private __gshared int screenshotCounter = 0;
+    mixin ExportForC!"screenshotCounter";
+}
 
 /// Initialize window and OpenGL context
 /// NOTE: data parameter could be used to pass any kind of required data to the initialization
@@ -1143,6 +1157,35 @@ extern(C) private bool InitGraphicsDevice(int width, int height) nothrow @nogc
     return true;
 }
 
+// Set viewport for a provided width and height
+private extern(C) void SetupViewport(int width, int height) nothrow @nogc
+{
+    CORE.Window.render.width = width;
+    CORE.Window.render.height = height;
+
+    // Set viewport width and height
+    // NOTE: We consider render size (scaled) and offset in case black bars are required and
+    // render area does not match full display area (this situation is only applicable on fullscreen mode)
+    version(OSX) { // #if defined(__APPLE__)
+        float xScale = 1.0f, yScale = 1.0f;
+        glfwGetWindowContentScale(CORE.Window.handle, &xScale, &yScale);
+        rlViewport(cast(int)(CORE.Window.renderOffset.x/2*xScale), cast(int)(CORE.Window.renderOffset.y/2*yScale), cast(int)((CORE.Window.render.width)*xScale), cast(int)((CORE.Window.render.height)*yScale));
+    }
+    else { 
+        rlViewport(CORE.Window.renderOffset.x/2, CORE.Window.renderOffset.y/2, CORE.Window.render.width, CORE.Window.render.height);
+    }
+
+    rlMatrixMode(RL_PROJECTION);        // Switch to projection matrix
+    rlLoadIdentity();                   // Reset current matrix (projection)
+
+    // Set orthographic projection to current framebuffer size
+    // NOTE: Configured top-left corner as (0, 0)
+    rlOrtho(0, CORE.Window.render.width, CORE.Window.render.height, 0, 0.0f, 1.0f);
+
+    rlMatrixMode(RL_MODELVIEW);         // Switch back to modelview matrix
+    rlLoadIdentity();                   // Reset current matrix (modelview)
+}
+
 // GLFW3 Error Callback, runs on GLFW3 error
 version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
     private extern(C) void ErrorCallback(int error, const char *description) nothrow @nogc
@@ -1244,6 +1287,72 @@ private extern(C) void CharCallback(GLFWwindow *window, uint key) nothrow @nogc
         // Add character to the queue
         CORE.Input.Keyboard.charPressedQueue[CORE.Input.Keyboard.charPressedQueueCount] = key;
         CORE.Input.Keyboard.charPressedQueueCount++;
+    }
+}
+
+// GLFW3 Mouse Button Callback, runs on mouse button pressed
+private extern(C) void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods) nothrow @nogc
+{
+    // WARNING: GLFW could only return GLFW_PRESS (1) or GLFW_RELEASE (0) for now,
+    // but future releases may add more actions (i.e. GLFW_REPEAT)
+    CORE.Input.Mouse.currentButtonState[button] = cast(char)action;
+
+    version(all) { // #if defined(SUPPORT_GESTURES_SYSTEM) && defined(SUPPORT_MOUSE_GESTURES)         // PLATFORM_DESKTOP
+        // Process mouse events as touches to be able to use mouse-gestures
+        GestureEvent gestureEvent;
+
+        // Register touch actions
+        if ((CORE.Input.Mouse.currentButtonState[button] == 1) && (CORE.Input.Mouse.previousButtonState[button] == 0)) gestureEvent.touchAction = TouchAction.TOUCH_ACTION_DOWN;
+        else if ((CORE.Input.Mouse.currentButtonState[button] == 0) && (CORE.Input.Mouse.previousButtonState[button] == 1)) gestureEvent.touchAction = TouchAction.TOUCH_ACTION_UP;
+
+        // NOTE: TOUCH_ACTION_MOVE event is registered in MouseCursorPosCallback()
+
+        // Assign a pointer ID
+        gestureEvent.pointId[0] = 0;
+
+        // Register touch points count
+        gestureEvent.pointCount = 1;
+
+        // Register touch points position, only one point registered
+        gestureEvent.position[0] = GetMousePosition();
+
+        // Normalize gestureEvent.position[0] for CORE.Window.screen.width and CORE.Window.screen.height
+        gestureEvent.position[0].x /= cast(float)GetScreenWidth();
+        gestureEvent.position[0].y /= cast(float)GetScreenHeight();
+
+        // Gesture data is sent to gestures system for processing
+        ProcessGestureEvent(gestureEvent);
+    }
+}
+
+// GLFW3 Cursor Position Callback, runs on mouse move
+private extern(C) void MouseCursorPosCallback(GLFWwindow *window, double x, double y) nothrow @nogc
+{
+    CORE.Input.Mouse.currentPosition.x = x;
+    CORE.Input.Mouse.currentPosition.y = y;
+    CORE.Input.Touch.position[0] = CORE.Input.Mouse.currentPosition;
+
+    version(all) { // #if defined(SUPPORT_GESTURES_SYSTEM) && defined(SUPPORT_MOUSE_GESTURES)         // PLATFORM_DESKTOP
+    // Process mouse events as touches to be able to use mouse-gestures
+        GestureEvent gestureEvent;
+
+        gestureEvent.touchAction = TouchAction.TOUCH_ACTION_MOVE;
+
+        // Assign a pointer ID
+        gestureEvent.pointId[0] = 0;
+
+        // Register touch points count
+        gestureEvent.pointCount = 1;
+
+        // Register touch points position, only one point registered
+        gestureEvent.position[0] = CORE.Input.Touch.position[0];
+
+        // Normalize gestureEvent.position[0] for CORE.Window.screen.width and CORE.Window.screen.height
+        gestureEvent.position[0].x /= cast(float)GetScreenWidth();
+        gestureEvent.position[0].y /= cast(float)GetScreenHeight();
+
+        // Gesture data is sent to gestures system for processing
+        ProcessGestureEvent(gestureEvent);
     }
 }
 
@@ -1995,11 +2104,196 @@ extern(C) void SetWindowSize(int width, int height) nothrow @nogc
     }
 }
 
+// Compute framebuffer size relative to screen size and display size
+// NOTE: Global variables CORE.Window.render.width/CORE.Window.render.height and CORE.Window.renderOffset.x/CORE.Window.renderOffset.y can be modified
+private extern(C) void SetupFramebuffer(int width, int height) nothrow @nogc
+{
+    // Calculate CORE.Window.render.width and CORE.Window.render.height, we have the display size (input params) and the desired screen size (global var)
+    if ((CORE.Window.screen.width > CORE.Window.display.width) || (CORE.Window.screen.height > CORE.Window.display.height))
+    {
+        TraceLog(TraceLogLevel.LOG_WARNING, "DISPLAY: Downscaling required: Screen size (%ix%i) is bigger than display size (%ix%i)", CORE.Window.screen.width, CORE.Window.screen.height, CORE.Window.display.width, CORE.Window.display.height);
 
-// TODO: move impl to D
-private extern(C) void InitTimer() nothrow @nogc;
-private extern(C) void SetupFramebuffer(int width, int height) nothrow @nogc;
-private extern(C) void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) nothrow @nogc;
-private extern(C) void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods) nothrow @nogc;
-private extern(C) void MouseCursorPosCallback(GLFWwindow *window, double x, double y) nothrow @nogc;
-private extern(C) void SetupViewport(int width, int height) nothrow @nogc;
+        // Downscaling to fit display with border-bars
+        float widthRatio = cast(float)CORE.Window.display.width/cast(float)CORE.Window.screen.width;
+        float heightRatio = cast(float)CORE.Window.display.height/cast(float)CORE.Window.screen.height;
+
+        if (widthRatio <= heightRatio)
+        {
+            CORE.Window.render.width = CORE.Window.display.width;
+            CORE.Window.render.height = cast(int)round(cast(float)CORE.Window.screen.height*widthRatio);
+            CORE.Window.renderOffset.x = 0;
+            CORE.Window.renderOffset.y = (CORE.Window.display.height - CORE.Window.render.height);
+        }
+        else
+        {
+            CORE.Window.render.width = cast(int)round(cast(float)CORE.Window.screen.width*heightRatio);
+            CORE.Window.render.height = CORE.Window.display.height;
+            CORE.Window.renderOffset.x = (CORE.Window.display.width - CORE.Window.render.width);
+            CORE.Window.renderOffset.y = 0;
+        }
+
+        // Screen scaling required
+        float scaleRatio = cast(float)CORE.Window.render.width/cast(float)CORE.Window.screen.width;
+        CORE.Window.screenScale = MatrixScale(scaleRatio, scaleRatio, 1.0f);
+
+        // NOTE: We render to full display resolution!
+        // We just need to calculate above parameters for downscale matrix and offsets
+        CORE.Window.render.width = CORE.Window.display.width;
+        CORE.Window.render.height = CORE.Window.display.height;
+
+        TraceLog(TraceLogLevel.LOG_WARNING, "DISPLAY: Downscale matrix generated, content will be rendered at (%ix%i)", CORE.Window.render.width, CORE.Window.render.height);
+    }
+    else if ((CORE.Window.screen.width < CORE.Window.display.width) || (CORE.Window.screen.height < CORE.Window.display.height))
+    {
+        // Required screen size is smaller than display size
+        TraceLog(TraceLogLevel.LOG_INFO, "DISPLAY: Upscaling required: Screen size (%ix%i) smaller than display size (%ix%i)", CORE.Window.screen.width, CORE.Window.screen.height, CORE.Window.display.width, CORE.Window.display.height);
+
+        if ((CORE.Window.screen.width == 0) || (CORE.Window.screen.height == 0))
+        {
+            CORE.Window.screen.width = CORE.Window.display.width;
+            CORE.Window.screen.height = CORE.Window.display.height;
+        }
+
+        // Upscaling to fit display with border-bars
+        float displayRatio = cast(float)CORE.Window.display.width/cast(float)CORE.Window.display.height;
+        float screenRatio = cast(float)CORE.Window.screen.width/cast(float)CORE.Window.screen.height;
+
+        if (displayRatio <= screenRatio)
+        {
+            CORE.Window.render.width = CORE.Window.screen.width;
+            CORE.Window.render.height = cast(int)round(cast(float)CORE.Window.screen.width/displayRatio);
+            CORE.Window.renderOffset.x = 0;
+            CORE.Window.renderOffset.y = (CORE.Window.render.height - CORE.Window.screen.height);
+        }
+        else
+        {
+            CORE.Window.render.width = cast(int)round(cast(float)CORE.Window.screen.height*displayRatio);
+            CORE.Window.render.height = CORE.Window.screen.height;
+            CORE.Window.renderOffset.x = (CORE.Window.render.width - CORE.Window.screen.width);
+            CORE.Window.renderOffset.y = 0;
+        }
+    }
+    else
+    {
+        CORE.Window.render.width = CORE.Window.screen.width;
+        CORE.Window.render.height = CORE.Window.screen.height;
+        CORE.Window.renderOffset.x = 0;
+        CORE.Window.renderOffset.y = 0;
+    }
+}
+
+// Initialize hi-resolution timer
+private extern(C) void InitTimer() nothrow @nogc
+{
+// Setting a higher resolution can improve the accuracy of time-out intervals in wait functions.
+// However, it can also reduce overall system performance, because the thread scheduler switches tasks more often.
+// High resolutions can also prevent the CPU power management system from entering power-saving modes.
+// Setting a higher resolution does not improve the accuracy of the high-resolution performance counter.
+    version(Windows) { // #if defined(_WIN32) && defined(SUPPORT_WINMM_HIGHRES_TIMER) && !defined(SUPPORT_BUSY_WAIT_LOOP)
+        timeBeginPeriod(1);                 // Setup high-resolution timer to 1ms (granularity of 1-2 ms)
+    }
+
+    version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        timespec now;
+
+        if (clock_gettime(CLOCK_MONOTONIC, &now) == 0)  // Success
+        {
+            CORE.Time.base = cast(cpp_ulonglong)(now.tv_sec*1000000000UL + now.tv_nsec);
+        }
+        else TraceLog(TraceLogLevel.LOG_WARNING, "TIMER: Hi-resolution timer not available");
+    }
+
+    CORE.Time.previous = GetTime();     // Get time as double
+}
+
+// GLFW3 Keyboard Callback, runs on key pressed
+private extern(C) void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) nothrow @nogc
+{
+    // WARNING: GLFW could return GLFW_REPEAT, we need to consider it as 1
+    // to work properly with our implementation (IsKeyDown/IsKeyUp checks)
+    // Issue with rcore.c allowing out of bounds indexes
+    // (see https://github.com/raysan5/raylib/issues/2619)
+    if(key < 0 || key >= MAX_KEYBOARD_KEYS)
+    {
+        TraceLog(TraceLogLevel.LOG_DEBUG, "SYSTEM: KeyCallback provided unknown keyboard key: %d", key);
+        return;
+    }
+    if (action == GLFW_RELEASE) CORE.Input.Keyboard.currentKeyState[key] = 0;
+    else CORE.Input.Keyboard.currentKeyState[key] = 1;
+
+    // Check if there is space available in the key queue
+    if ((CORE.Input.Keyboard.keyPressedQueueCount < MAX_KEY_PRESSED_QUEUE) && (action == GLFW_PRESS))
+    {
+        // Add character to the queue
+        CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = key;
+        CORE.Input.Keyboard.keyPressedQueueCount++;
+    }
+    
+    // Check the exit key to set close window
+    if ((key == CORE.Input.Keyboard.exitKey) && (action == GLFW_PRESS)) glfwSetWindowShouldClose(CORE.Window.handle, GLFW_TRUE);
+
+    version(all) { // #if defined(SUPPORT_SCREEN_CAPTURE)
+        if ((key == GLFW_KEY_F12) && (action == GLFW_PRESS))
+        {
+            version(all) { // #if defined(SUPPORT_GIF_RECORDING)
+                if (mods == GLFW_MOD_CONTROL)
+                {
+                    if (gifRecording)
+                    {
+                        gifRecording = false;
+
+                        MsfGifResult result = msf_gif_end(&gifState);
+
+                        SaveFileData(TextFormat("%s/screenrec%03i.gif", CORE.Storage.basePath, screenshotCounter), result.data, cast(uint)result.dataSize);
+                        msf_gif_free(result);
+
+                        version(none) { // #if defined(PLATFORM_WEB)
+                            // Download file from MEMFS (emscripten memory filesystem)
+                            // saveFileFromMEMFSToDisk() function is defined in raylib/templates/web_shel/shell.html
+                            emscripten_run_script(TextFormat("saveFileFromMEMFSToDisk('%s','%s')", TextFormat("screenrec%03i.gif", screenshotCounter - 1), TextFormat("screenrec%03i.gif", screenshotCounter - 1)));
+                        }
+
+                        TraceLog(TraceLogLevel.LOG_INFO, "SYSTEM: Finish animated GIF recording");
+                    }
+                    else
+                    {
+                        gifRecording = true;
+                        gifFrameCounter = 0;
+
+                        msf_gif_begin(&gifState, CORE.Window.screen.width, CORE.Window.screen.height);
+                        screenshotCounter++;
+
+                        TraceLog(TraceLogLevel.LOG_INFO, "SYSTEM: Start animated GIF recording: %s", TextFormat("screenrec%03i.gif", screenshotCounter));
+                    }
+                }
+                else
+                {
+                    TakeScreenshot(TextFormat("screenshot%03i.png", screenshotCounter));
+                    screenshotCounter++;
+                }
+            } // SUPPORT_GIF_RECORDING
+            else // TODO: this repeated code was part of some C macro abuse, fix with a D mechanism.
+            {
+                TakeScreenshot(TextFormat("screenshot%03i.png", screenshotCounter));
+                screenshotCounter++;
+            }
+        }
+    } // SUPPORT_SCREEN_CAPTURE
+
+    version(none) { // #if defined(SUPPORT_EVENTS_AUTOMATION)
+        if ((key == GLFW_KEY_F11) && (action == GLFW_PRESS))
+        {
+            eventsRecording = !eventsRecording;
+
+            // On finish recording, we export events into a file
+            if (!eventsRecording) ExportAutomationEvents("eventsrec.rep");
+        }
+        else if ((key == GLFW_KEY_F9) && (action == GLFW_PRESS))
+        {
+            LoadAutomationEvents("eventsrec.rep");
+            eventsPlaying = true;
+
+            TraceLog(TraceLogLevel.LOG_WARNING, "eventsPlaying enabled!");
+        }
+    }
+}

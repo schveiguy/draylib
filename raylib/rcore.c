@@ -490,7 +490,9 @@ static char **dirFilesPath = NULL;          // Store directory files paths as st
 static int dirFileCount = 0;                // Count directory files strings
 
 #if defined(SUPPORT_SCREEN_CAPTURE)
-static int screenshotCounter = 0;           // Screenshots counter
+//static int screenshotCounter = 0;           // Screenshots counter
+extern int *_get_screenshotCounter(); // use from D side
+#define screenshotCounter (*_get_screenshotCounter())
 #endif
 
 #if defined(SUPPORT_GIF_RECORDING)
@@ -623,8 +625,8 @@ void SetupViewport(int width, int height);       // Set viewport for a provided 
 // Input callbacks events
 void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);  // GLFW3 Keyboard Callback, runs on key pressed
 //static void CharCallback(GLFWwindow *window, unsigned int key);                            // GLFW3 Char Key Callback, runs on key pressed (get char value)
-void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods);     // GLFW3 Mouse Button Callback, runs on mouse button pressed
-void MouseCursorPosCallback(GLFWwindow *window, double x, double y);                // GLFW3 Cursor Position Callback, runs on mouse move
+//void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods);     // GLFW3 Mouse Button Callback, runs on mouse button pressed
+//void MouseCursorPosCallback(GLFWwindow *window, double x, double y);                // GLFW3 Cursor Position Callback, runs on mouse move
 //static void MouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset);       // GLFW3 Srolling Callback, runs on mouse wheel
 //static void CursorEnterCallback(GLFWwindow *window, int enter);                            // GLFW3 Cursor Enter Callback, cursor enters client area
 #endif
@@ -4470,7 +4472,6 @@ bool InitGraphicsDevice(int width, int height)
 
     return true;
 }
-#endif 
 
 // Set viewport for a provided width and height
 void SetupViewport(int width, int height)
@@ -4502,7 +4503,7 @@ void SetupViewport(int width, int height)
 
 // Compute framebuffer size relative to screen size and display size
 // NOTE: Global variables CORE.Window.render.width/CORE.Window.render.height and CORE.Window.renderOffset.x/CORE.Window.renderOffset.y can be modified
-void SetupFramebuffer(int width, int height)
+/*static*/ void SetupFramebuffer(int width, int height)
 {
     // Calculate CORE.Window.render.width and CORE.Window.render.height, we have the display size (input params) and the desired screen size (global var)
     if ((CORE.Window.screen.width > CORE.Window.display.width) || (CORE.Window.screen.height > CORE.Window.display.height))
@@ -4579,7 +4580,7 @@ void SetupFramebuffer(int width, int height)
 }
 
 // Initialize hi-resolution timer
-void InitTimer(void)
+/*static*/ void InitTimer(void)
 {
 // Setting a higher resolution can improve the accuracy of time-out intervals in wait functions.
 // However, it can also reduce overall system performance, because the thread scheduler switches tasks more often.
@@ -4601,6 +4602,7 @@ void InitTimer(void)
 
     CORE.Time.previous = GetTime();     // Get time as double
 }
+#endif
 
 // Wait for some milliseconds (stop program execution)
 // NOTE: Sleep() granularity could be around 10 ms, it means, Sleep() could
@@ -5085,7 +5087,6 @@ static void WindowFocusCallback(GLFWwindow *window, int focused)
     if (focused) CORE.Window.flags &= ~FLAG_WINDOW_UNFOCUSED;   // The window was focused
     else CORE.Window.flags |= FLAG_WINDOW_UNFOCUSED;            // The window lost focus
 }
-#endif
 
 // GLFW3 Keyboard Callback, runs on key pressed
 void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -5167,7 +5168,6 @@ void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods
 #endif
 }
 
-#if 0 // in D
 // GLFW3 Char Key Callback, runs on key down (gets equivalent unicode char value)
 static void CharCallback(GLFWwindow *window, unsigned int key)
 {
@@ -5186,7 +5186,6 @@ static void CharCallback(GLFWwindow *window, unsigned int key)
         CORE.Input.Keyboard.charPressedQueueCount++;
     }
 }
-#endif
 
 // GLFW3 Mouse Button Callback, runs on mouse button pressed
 void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
@@ -5254,7 +5253,6 @@ void MouseCursorPosCallback(GLFWwindow *window, double x, double y)
 #endif
 }
 
-#if 0 // in D
 // GLFW3 Srolling Callback, runs on mouse wheel
 static void MouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset)
 {
