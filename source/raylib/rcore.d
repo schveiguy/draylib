@@ -201,6 +201,8 @@ mixin ExportForC!"gifRecording";
 private __gshared MsfGifState gifState;
 mixin ExportForC!"gifState";
 
+/// Initialize window and OpenGL context
+/// NOTE: data parameter could be used to pass any kind of required data to the initialization
 extern(C) void InitWindow(int width, int height, const(char)*title) nothrow @nogc
 {
     TraceLog(TraceLogLevel.LOG_INFO, "Initializing raylib (D port) %s", RAYLIB_VERSION.ptr);
@@ -1260,6 +1262,7 @@ private extern(C) void CursorEnterCallback(GLFWwindow *window, int enter) nothro
 }
 
 
+/// Close window and unload OpenGL context
 extern(C) void CloseWindow()
 {
     version(all) { //#if defined(SUPPORT_GIF_RECORDING)
@@ -1404,6 +1407,250 @@ extern(C) void CloseWindow()
 
     CORE.Window.ready = false;
     TraceLog(TraceLogLevel.LOG_INFO, "Window closed successfully".ptr);
+}
+
+/// Check if KEY_ESCAPE pressed or Close icon pressed
+extern(C) bool WindowShouldClose() nothrow @nogc
+{
+    version(none) { // #if defined(PLATFORM_WEB)
+        // Emterpreter-Async required to run sync code
+        // https://github.com/emscripten-core/emscripten/wiki/Emterpreter#emterpreter-async-run-synchronous-code
+        // By default, this function is never called on a web-ready raylib example because we encapsulate
+        // frame code in a UpdateDrawFrame() function, to allow browser manage execution asynchronously
+        // but now emscripten allows sync code to be executed in an interpreted way, using emterpreter!
+        emscripten_sleep(16);
+        return false;
+    }
+
+    else version(all) { // #if defined(PLATFORM_DESKTOP)
+        if (CORE.Window.ready)
+        {
+            // While window minimized, stop loop execution
+            while (IsWindowState(ConfigFlags.FLAG_WINDOW_MINIMIZED) && !IsWindowState(ConfigFlags.FLAG_WINDOW_ALWAYS_RUN)) glfwWaitEvents();
+
+            CORE.Window.shouldClose = cast(bool)glfwWindowShouldClose(CORE.Window.handle);
+
+            // Reset close status for next frame
+            glfwSetWindowShouldClose(CORE.Window.handle, GLFW_FALSE);
+
+            return CORE.Window.shouldClose;
+        }
+        else return true;
+    }
+
+    else version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        if (CORE.Window.ready) return CORE.Window.shouldClose;
+        else return true;
+    }
+}
+
+/// Check if window has been initialized successfully
+extern(C) bool IsWindowReady() nothrow @nogc
+{
+    return CORE.Window.ready;
+}
+
+/// Check if window is currently fullscreen
+extern(C) bool IsWindowFullscreen() nothrow @nogc
+{
+    return CORE.Window.fullscreen;
+}
+
+/// Check if window is currently hidden
+extern(C) bool IsWindowHidden() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        return ((CORE.Window.flags & ConfigFlags.FLAG_WINDOW_HIDDEN) > 0);
+    }
+    else { // not an #else in C
+        return false;
+    }
+}
+
+/// Check if window has been minimized
+extern(C) bool IsWindowMinimized() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+        return ((CORE.Window.flags & ConfigFlags.FLAG_WINDOW_MINIMIZED) > 0);
+    }
+    else {
+        return false;
+    }
+}
+
+/// Check if window has been maximized (only PLATFORM_DESKTOP)
+extern(C) bool IsWindowMaximized() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        return ((CORE.Window.flags & ConfigFlags.FLAG_WINDOW_MAXIMIZED) > 0);
+    }
+    else {
+        return false;
+    }
+}
+
+/// Check if window has the focus
+extern(C) bool IsWindowFocused() nothrow @nogc
+{
+    version(all) { //#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+        return ((CORE.Window.flags & ConfigFlags.FLAG_WINDOW_UNFOCUSED) == 0);
+    }
+    else {
+        return true;
+    }
+}
+
+/// Check if window has been resizedLastFrame
+extern(C) bool IsWindowResized() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+        return CORE.Window.resizedLastFrame;
+    }
+    else {
+        return false;
+    }
+}
+
+/// Check if one specific window flag is enabled
+extern(C) bool IsWindowState(uint flag) nothrow @nogc
+{
+    return ((CORE.Window.flags & flag) > 0);
+}
+
+/// Toggle fullscreen mode (only PLATFORM_DESKTOP)
+extern(C) void ToggleFullscreen() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+                   // NOTE: glfwSetWindowMonitor() doesn't work properly (bugs)
+        if (!CORE.Window.fullscreen)
+        {
+            // Store previous window position (in case we exit fullscreen)
+            glfwGetWindowPos(CORE.Window.handle, &CORE.Window.position.x, &CORE.Window.position.y);
+
+            int monitorCount = 0;
+            GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+
+            int monitorIndex = GetCurrentMonitor();
+
+            // Use current monitor, so we correctly get the display the window is on
+            GLFWmonitor* monitor = monitorIndex < monitorCount ?  monitors[monitorIndex] : null;
+
+            if (!monitor)
+            {
+                TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Failed to get monitor");
+
+                CORE.Window.fullscreen = false;          // Toggle fullscreen flag
+                CORE.Window.flags &= ~ConfigFlags.FLAG_FULLSCREEN_MODE;
+
+                glfwSetWindowMonitor(CORE.Window.handle, null, 0, 0, CORE.Window.screen.width, CORE.Window.screen.height, GLFW_DONT_CARE);
+                return;
+            }
+
+            CORE.Window.fullscreen = true;          // Toggle fullscreen flag
+            CORE.Window.flags |= ConfigFlags.FLAG_FULLSCREEN_MODE;
+
+            glfwSetWindowMonitor(CORE.Window.handle, monitor, 0, 0, CORE.Window.screen.width, CORE.Window.screen.height, GLFW_DONT_CARE);
+        }
+        else
+        {
+            CORE.Window.fullscreen = false;          // Toggle fullscreen flag
+            CORE.Window.flags &= ~ConfigFlags.FLAG_FULLSCREEN_MODE;
+
+            glfwSetWindowMonitor(CORE.Window.handle, null, CORE.Window.position.x, CORE.Window.position.y, CORE.Window.screen.width, CORE.Window.screen.height, GLFW_DONT_CARE);
+        }
+
+        // Try to enable GPU V-Sync, so frames are limited to screen refresh rate (60Hz -> 60 FPS)
+        // NOTE: V-Sync can be enabled by graphic driver configuration
+        if (CORE.Window.flags & ConfigFlags.FLAG_VSYNC_HINT) glfwSwapInterval(1);
+    }
+    version(none) { // #if defined(PLATFORM_WEB)
+        /+++++++++ DOES NOT PARSE IN D
+        EM_ASM
+            (
+             // This strategy works well while using raylib minimal web shell for emscripten,
+             // it re-scales the canvas to fullscreen using monitor resolution, for tools this
+             // is a good strategy but maybe games prefer to keep current canvas resolution and
+             // display it in fullscreen, adjusting monitor resolution if possible
+             if (document.fullscreenElement) document.exitFullscreen();
+             else Module.requestFullscreen(false, true);
+            );
+        ++++++++++/
+        /*
+           if (!CORE.Window.fullscreen)
+           {
+        // Option 1: Request fullscreen for the canvas element
+        // This option does not seem to work at all
+        //emscripten_request_fullscreen("#canvas", false);
+
+        // Option 2: Request fullscreen for the canvas element with strategy
+        // This option does not seem to work at all
+        // Ref: https://github.com/emscripten-core/emscripten/issues/5124
+        // EmscriptenFullscreenStrategy strategy = {
+        // .scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH, //EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT,
+        // .canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF,
+        // .filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT,
+        // .canvasResizedCallback = EmscriptenWindowResizedCallback,
+        // .canvasResizedCallbackUserData = null
+        // };
+        //emscripten_request_fullscreen_strategy("#canvas", EM_FALSE, &strategy);
+
+        // Option 3: Request fullscreen for the canvas element with strategy
+        // It works as expected but only inside the browser (client area)
+        EmscriptenFullscreenStrategy strategy = {
+        .scaleMode = EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT,
+        .canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF,
+        .filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT,
+        .canvasResizedCallback = EmscriptenWindowResizedCallback,
+        .canvasResizedCallbackUserData = null
+        };
+        emscripten_enter_soft_fullscreen("#canvas", &strategy);
+
+        int width, height;
+        emscripten_get_canvas_element_size("#canvas", &width, &height);
+        TraceLog(TraceLogLevel.LOG_WARNING, "Emscripten: Enter fullscreen: Canvas size: %i x %i", width, height);
+        }
+        else
+        {
+        //emscripten_exit_fullscreen();
+        emscripten_exit_soft_fullscreen();
+
+        int width, height;
+        emscripten_get_canvas_element_size("#canvas", &width, &height);
+        TraceLog(TraceLogLevel.LOG_WARNING, "Emscripten: Exit fullscreen: Canvas size: %i x %i", width, height);
+        }
+         */
+
+        CORE.Window.fullscreen = !CORE.Window.fullscreen;          // Toggle fullscreen flag
+        CORE.Window.flags ^= ConfigFlags.FLAG_FULLSCREEN_MODE;
+    }
+    version(none) {  // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        TraceLog(TraceLogLevel.LOG_WARNING, "SYSTEM: Failed to toggle to windowed mode");
+    }
+}
+
+
+/// Get current screen width
+extern(C) int GetScreenWidth() nothrow @nogc
+{
+    return CORE.Window.screen.width;
+}
+
+/// Get current screen height
+extern(C) int GetScreenHeight() nothrow @nogc
+{
+    return CORE.Window.screen.height;
+}
+
+/// Get current render width which is equal to screen width * dpi scale
+extern(C) int GetRenderWidth() nothrow @nogc
+{
+    return CORE.Window.render.width;
+}
+
+/// Get current screen height which is equal to screen height * dpi scale
+extern(C) int GetRenderHeight() nothrow @nogc
+{
+    return CORE.Window.render.height;
 }
 
 // TODO: move impl to D

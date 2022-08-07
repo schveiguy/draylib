@@ -922,17 +922,21 @@ alias SaveFileTextCallback = bool function (const(char)* fileName, char* text); 
 // Prevents name mangling of functions
 
 // Window-related functions
-void InitWindow (int width, int height, const(char)* title); // Initialize window and OpenGL context
-bool WindowShouldClose (); // Check if KEY_ESCAPE pressed or Close icon pressed
-void CloseWindow (); // Close window and unload OpenGL context
-bool IsWindowReady (); // Check if window has been initialized successfully
-bool IsWindowFullscreen (); // Check if window is currently fullscreen
-bool IsWindowHidden (); // Check if window is currently hidden (only PLATFORM_DESKTOP)
-bool IsWindowMinimized (); // Check if window is currently minimized (only PLATFORM_DESKTOP)
-bool IsWindowMaximized (); // Check if window is currently maximized (only PLATFORM_DESKTOP)
-bool IsWindowFocused (); // Check if window is currently focused (only PLATFORM_DESKTOP)
-bool IsWindowResized (); // Check if window has been resized last frame
-bool IsWindowState (uint flag); // Check if one specific window flag is enabled
+public import raylib.rcore : InitWindow, WindowShouldClose, CloseWindow,
+       IsWindowReady, IsWindowFullscreen, IsWindowHidden, IsWindowMinimized,
+       IsWindowMaximized, IsWindowFocused, IsWindowResized, IsWindowState;
+//void InitWindow (int width, int height, const(char)* title); // Initialize window and OpenGL context
+//bool WindowShouldClose (); // Check if KEY_ESCAPE pressed or Close icon pressed
+//void CloseWindow (); // Close window and unload OpenGL context
+//bool IsWindowReady (); // Check if window has been initialized successfully
+//bool IsWindowFullscreen (); // Check if window is currently fullscreen
+//bool IsWindowHidden (); // Check if window is currently hidden (only PLATFORM_DESKTOP)
+//bool IsWindowMinimized (); // Check if window is currently minimized (only PLATFORM_DESKTOP)
+//bool IsWindowMaximized (); // Check if window is currently maximized (only PLATFORM_DESKTOP)
+//bool IsWindowFocused (); // Check if window is currently focused (only PLATFORM_DESKTOP)
+//bool IsWindowResized (); // Check if window has been resized last frame
+//bool IsWindowState (uint flag); // Check if one specific window flag is enabled
+
 void SetWindowState (uint flags); // Set window configuration state using flags
 void ClearWindowState (uint flags); // Clear window configuration state flags
 void ToggleFullscreen (); // Toggle window state: fullscreen/windowed (only PLATFORM_DESKTOP)
@@ -946,8 +950,10 @@ void SetWindowMonitor (int monitor); // Set monitor for the current window (full
 void SetWindowMinSize (int width, int height); // Set window minimum dimensions (for FLAG_WINDOW_RESIZABLE)
 void SetWindowSize (int width, int height); // Set window dimensions
 void* GetWindowHandle (); // Get native window handle
-int GetScreenWidth (); // Get current screen width
-int GetScreenHeight (); // Get current screen height
+
+public import raylib.rcore : GetScreenWidth, GetScreenHeight;
+//int GetScreenWidth (); // Get current screen width
+//int GetScreenHeight (); // Get current screen height
 int GetMonitorCount (); // Get number of connected monitors
 int GetCurrentMonitor (); // Get current connected monitor
 Vector2 GetMonitorPosition (int monitor); // Get specified monitor position
