@@ -7,8 +7,14 @@ import raylib.rgestures;
 import raylib.rlgl;
 import core.stdc.stdlib;
 import core.sys.posix.sys.time;
-import std.math; // for round
+import core.stdc.math;
 import raylib.external.msf_gif;
+
+// define allocation functions
+alias RL_MALLOC = malloc;
+alias RL_CALLOC = calloc;
+alias RL_REALLOC = realloc;
+alias RL_FREE = free;
 
 version(Windows)
 {
@@ -2617,8 +2623,330 @@ extern(C) void DisableCursor() nothrow @nogc
     CORE.Input.Mouse.cursorHidden = true;
 }
 
-// Check if cursor is on the current screen.
+/// Check if cursor is on the current screen.
 extern(C) bool IsCursorOnScreen() nothrow @nogc
 {
     return CORE.Input.Mouse.cursorOnScreen;
+}
+
+/// Set background color (framebuffer clear color)
+extern(C) void ClearBackground(Color color) nothrow @nogc
+{
+    rlClearColor(color.r, color.g, color.b, color.a);   // Set clear color
+    rlClearScreenBuffers();                             // Clear current framebuffers
+}
+
+/// Setup canvas (framebuffer) to start drawing
+extern(C) void BeginDrawing() nothrow @nogc
+{
+    // WARNING: Previously to BeginDrawing() other render textures drawing could happen,
+    // consequently the measure for update vs draw is not accurate (only the total frame time is accurate)
+
+    CORE.Time.current = GetTime();      // Number of elapsed seconds since InitTimer()
+    CORE.Time.update = CORE.Time.current - CORE.Time.previous;
+    CORE.Time.previous = CORE.Time.current;
+
+    rlLoadIdentity();                   // Reset current matrix (modelview)
+    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling
+
+    //rlTranslatef(0.375, 0.375, 0);    // HACK to have 2D pixel-perfect drawing on OpenGL 1.1
+                                        // NOTE: Not required with OpenGL 3.3+
+}
+
+/// End canvas drawing and swap buffers (double buffering)
+extern(C) void EndDrawing() nothrow @nogc
+{
+    rlDrawRenderBatchActive();      // Update and draw internal render batch
+
+    version(none) { // #if defined(SUPPORT_MOUSE_CURSOR_POINT)
+                    // Draw a small rectangle on mouse position for user reference
+        if (!CORE.Input.Mouse.cursorHidden)
+        {
+            DrawRectangle(CORE.Input.Mouse.currentPosition.x, CORE.Input.Mouse.currentPosition.y, 3, 3, MAROON);
+            rlDrawRenderBatchActive();  // Update and draw internal render batch
+        }
+    }
+
+    version(all) { // #if defined(SUPPORT_GIF_RECORDING)
+        // Draw record indicator
+        if (gifRecording)
+        {
+            enum GIF_RECORD_FRAMERATE = 10;
+            gifFrameCounter++;
+
+            // NOTE: We record one gif frame every 10 game frames
+            if ((gifFrameCounter%GIF_RECORD_FRAMERATE) == 0)
+            {
+                // Get image data for the current frame (from backbuffer)
+                // NOTE: This process is quite slow... :(
+                ubyte *screenData = rlReadScreenPixels(CORE.Window.screen.width, CORE.Window.screen.height);
+                msf_gif_frame(&gifState, screenData, 10, 16, CORE.Window.screen.width*4);
+
+                RL_FREE(screenData);    // Free image data
+            }
+
+            if (((gifFrameCounter/15)%2) == 1)
+            {
+                DrawCircle(30, CORE.Window.screen.height - 20, 10, MAROON);
+                DrawText("GIF RECORDING", 50, CORE.Window.screen.height - 25, 10, RED);
+            }
+
+            rlDrawRenderBatchActive();  // Update and draw internal render batch
+        }
+    }
+
+    version(none) { //  #if defined(SUPPORT_EVENTS_AUTOMATION)
+                    // Draw record/play indicator
+        if (eventsRecording)
+        {
+            gifFrameCounter++;
+
+            if (((gifFrameCounter/15)%2) == 1)
+            {
+                DrawCircle(30, CORE.Window.screen.height - 20, 10, MAROON);
+                DrawText("EVENTS RECORDING", 50, CORE.Window.screen.height - 25, 10, RED);
+            }
+
+            rlDrawRenderBatchActive();  // Update and draw internal render batch
+        }
+        else if (eventsPlaying)
+        {
+            gifFrameCounter++;
+
+            if (((gifFrameCounter/15)%2) == 1)
+            {
+                DrawCircle(30, CORE.Window.screen.height - 20, 10, LIME);
+                DrawText("EVENTS PLAYING", 50, CORE.Window.screen.height - 25, 10, GREEN);
+            }
+
+            rlDrawRenderBatchActive();  // Update and draw internal render batch
+        }
+    }
+
+    version(all) { // #if !defined(SUPPORT_CUSTOM_FRAME_CONTROL)
+        SwapScreenBuffer();                  // Copy back buffer to front buffer (screen)
+
+        // Frame time control system
+        CORE.Time.current = GetTime();
+        CORE.Time.draw = CORE.Time.current - CORE.Time.previous;
+        CORE.Time.previous = CORE.Time.current;
+
+        CORE.Time.frame = CORE.Time.update + CORE.Time.draw;
+
+        // Wait for some milliseconds...
+        if (CORE.Time.frame < CORE.Time.target)
+        {
+            WaitTime((CORE.Time.target - CORE.Time.frame)*1000.0f);
+
+            CORE.Time.current = GetTime();
+            double waitTime = CORE.Time.current - CORE.Time.previous;
+            CORE.Time.previous = CORE.Time.current;
+
+            CORE.Time.frame += waitTime;    // Total frame time: update + draw + wait
+        }
+
+        PollInputEvents();      // Poll user events (before next frame update)
+    }
+
+    version(none) { // #if defined(SUPPORT_EVENTS_AUTOMATION)
+                    // Events recording and playing logic
+        if (eventsRecording) RecordAutomationEvent(CORE.Time.frameCounter);
+        else if (eventsPlaying)
+        {
+            // TODO: When should we play? After/before/replace PollInputEvents()?
+            if (CORE.Time.frameCounter >= eventCount) eventsPlaying = false;
+            PlayAutomationEvent(CORE.Time.frameCounter);
+        }
+    }
+
+    CORE.Time.frameCounter++;
+}
+
+/// Initialize 2D mode with custom camera (2D)
+extern(C) void BeginMode2D(Camera2D camera) nothrow @nogc
+{
+    rlDrawRenderBatchActive();      // Update and draw internal render batch
+
+    rlLoadIdentity();               // Reset current matrix (modelview)
+
+    // Apply 2d camera transformation to modelview
+    rlMultMatrixf(MatrixToFloat(GetCameraMatrix2D(camera)));
+
+    // Apply screen scaling if required
+    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale));
+}
+
+/// Ends 2D mode with custom camera
+extern(C) void EndMode2D() nothrow @nogc
+{
+    rlDrawRenderBatchActive();      // Update and draw internal render batch
+
+    rlLoadIdentity();               // Reset current matrix (modelview)
+    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling if required
+}
+
+// Initializes 3D mode with custom camera (3D)
+extern(C) void BeginMode3D(Camera3D camera) nothrow @nogc
+{
+    rlDrawRenderBatchActive();      // Update and draw internal render batch
+
+    rlMatrixMode(RL_PROJECTION);    // Switch to projection matrix
+    rlPushMatrix();                 // Save previous matrix, which contains the settings for the 2d ortho projection
+    rlLoadIdentity();               // Reset current matrix (projection)
+
+    float aspect = CORE.Window.currentFbo.width/cast(float)CORE.Window.currentFbo.height;
+
+    // NOTE: zNear and zFar values are important when computing depth buffer values
+    if (camera.projection == CameraProjection.CAMERA_PERSPECTIVE)
+    {
+        // Setup perspective projection
+        double top = RL_CULL_DISTANCE_NEAR*tan(camera.fovy*0.5*DEG2RAD);
+        double right = top*aspect;
+
+        rlFrustum(-right, right, -top, top, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+    }
+    else if (camera.projection == CameraProjection.CAMERA_ORTHOGRAPHIC)
+    {
+        // Setup orthographic projection
+        double top = camera.fovy/2.0;
+        double right = top*aspect;
+
+        rlOrtho(-right, right, -top,top, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+    }
+
+    rlMatrixMode(RL_MODELVIEW);     // Switch back to modelview matrix
+    rlLoadIdentity();               // Reset current matrix (modelview)
+
+    // Setup Camera view
+    Matrix matView = MatrixLookAt(camera.position, camera.target, camera.up);
+    rlMultMatrixf(MatrixToFloat(matView));      // Multiply modelview matrix by view matrix (camera)
+
+    rlEnableDepthTest();            // Enable DEPTH_TEST for 3D
+}
+
+/// Ends 3D mode and returns to default 2D orthographic mode
+extern(C) void EndMode3D() nothrow @nogc
+{
+    rlDrawRenderBatchActive();      // Update and draw internal render batch
+
+    rlMatrixMode(RL_PROJECTION);    // Switch to projection matrix
+    rlPopMatrix();                  // Restore previous matrix (projection) from matrix stack
+
+    rlMatrixMode(RL_MODELVIEW);     // Switch back to modelview matrix
+    rlLoadIdentity();               // Reset current matrix (modelview)
+
+    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling if required
+
+    rlDisableDepthTest();           // Disable DEPTH_TEST for 2D
+}
+
+/// Initializes render texture for drawing
+extern(C) void BeginTextureMode(RenderTexture2D target) nothrow @nogc
+{
+    rlDrawRenderBatchActive();      // Update and draw internal render batch
+
+    rlEnableFramebuffer(target.id); // Enable render target
+
+    // Set viewport to framebuffer size
+    rlViewport(0, 0, target.texture.width, target.texture.height);
+
+    rlMatrixMode(RL_PROJECTION);    // Switch to projection matrix
+    rlLoadIdentity();               // Reset current matrix (projection)
+
+    // Set orthographic projection to current framebuffer size
+    // NOTE: Configured top-left corner as (0, 0)
+    rlOrtho(0, target.texture.width, target.texture.height, 0, 0.0f, 1.0f);
+
+    rlMatrixMode(RL_MODELVIEW);     // Switch back to modelview matrix
+    rlLoadIdentity();               // Reset current matrix (modelview)
+
+    //rlScalef(0.0f, -1.0f, 0.0f);  // Flip Y-drawing (?)
+
+    // Setup current width/height for proper aspect ratio
+    // calculation when using BeginMode3D()
+    CORE.Window.currentFbo.width = target.texture.width;
+    CORE.Window.currentFbo.height = target.texture.height;
+}
+
+/// Ends drawing to render texture
+extern(C) void EndTextureMode() nothrow @nogc
+{
+    rlDrawRenderBatchActive();      // Update and draw internal render batch
+
+    rlDisableFramebuffer();         // Disable render target (fbo)
+
+    // Set viewport to default framebuffer size
+    SetupViewport(CORE.Window.render.width, CORE.Window.render.height);
+
+    // Reset current fbo to screen size
+    CORE.Window.currentFbo.width = CORE.Window.render.width;
+    CORE.Window.currentFbo.height = CORE.Window.render.height;
+}
+
+/// Begin custom shader mode
+extern(C) void BeginShaderMode(Shader shader) nothrow @nogc
+{
+    rlSetShader(shader.id, shader.locs);
+}
+
+/// End custom shader mode (returns to default shader)
+extern(C) void EndShaderMode() nothrow @nogc
+{
+    rlSetShader(rlGetShaderIdDefault(), rlGetShaderLocsDefault());
+}
+
+/// Begin blending mode (alpha, additive, multiplied, subtract, custom)
+/// NOTE: Blend modes supported are enumerated in BlendMode enum
+extern(C) void BeginBlendMode(int mode) nothrow @nogc
+{
+    rlSetBlendMode(mode);
+}
+
+/// End blending mode (reset to default: alpha blending)
+extern(C) void EndBlendMode() nothrow @nogc
+{
+    rlSetBlendMode(BlendMode.BLEND_ALPHA);
+}
+
+/// Begin scissor mode (define screen area for following drawing)
+/// NOTE: Scissor rec refers to bottom-left corner, we change it to upper-left
+extern(C) void BeginScissorMode(int x, int y, int width, int height) nothrow @nogc
+{
+    rlDrawRenderBatchActive();      // Update and draw internal render batch
+
+    rlEnableScissorTest();
+
+    if ((CORE.Window.flags & ConfigFlags.FLAG_WINDOW_HIGHDPI) > 0)
+    {
+        Vector2 scale = GetWindowScaleDPI();
+
+        rlScissor(cast(int)(x*scale.x), cast(int)(CORE.Window.currentFbo.height - (y + height)*scale.y), cast(int)(width*scale.x), cast(int)(height*scale.y));
+    }
+    else
+    {
+        rlScissor(x, CORE.Window.currentFbo.height - (y + height), width, height);
+    }
+}
+
+/// End scissor mode
+extern(C) void EndScissorMode() nothrow @nogc
+{
+    rlDrawRenderBatchActive();      // Update and draw internal render batch
+    rlDisableScissorTest();
+}
+
+/// Begin VR drawing configuration
+extern(C) void BeginVrStereoMode(VrStereoConfig config) nothrow @nogc
+{
+    rlEnableStereoRender();
+
+    // Set stereo render matrices
+    rlSetMatrixProjectionStereo(config.projection[0], config.projection[1]);
+    rlSetMatrixViewOffsetStereo(config.viewOffset[0], config.viewOffset[1]);
+}
+
+/// End VR drawing process (and desktop mirror)
+extern(C) void EndVrStereoMode() nothrow @nogc
+{
+    rlDisableStereoRender();
 }

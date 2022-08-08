@@ -73,16 +73,27 @@ enum RAD2DEG = 180.0f / PI;
 
 // Get float vector for Matrix
 
+extern (D) auto _devolveFloatArray(T)(ref T item)
+{
+    // build a shim which devolves to a pointer to float when needed
+    static struct FloatThing {
+        T item;
+        auto _get() return { return &item[0]; }
+        alias _get this;
+    }
+    return FloatThing(item);
+}
+
 extern (D) auto MatrixToFloat(T)(auto ref T mat)
 {
-    return MatrixToFloatV(mat).v;
+    return MatrixToFloatV(mat).v._devolveFloatArray;
 }
 
 // Get float vector for Vector3
 
 extern (D) auto Vector3ToFloat(T)(auto ref T vec)
 {
-    return Vector3ToFloatV(vec).v;
+    return Vector3ToFloatV(vec).v._devolveFloatArray;
 }
 
 //----------------------------------------------------------------------------------
