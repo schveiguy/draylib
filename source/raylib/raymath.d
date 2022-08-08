@@ -238,6 +238,11 @@ Vector2 Vector2SubtractValue (Vector2 v, float sub)
 
 // Calculate vector length
 float Vector2Length (Vector2 v);
+{
+    float result = sqrtf((v.x*v.x) + (v.y*v.y));
+
+    return result;
+}
 
 // Calculate vector square length
 float Vector2LengthSqr (Vector2 v);
