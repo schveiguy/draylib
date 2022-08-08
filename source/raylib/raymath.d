@@ -193,7 +193,10 @@ float Remap (float value, float inputStart, float inputEnd, float outputStart, f
 //----------------------------------------------------------------------------------
 
 // Vector with components value 0.0f
-Vector2 Vector2Zero ();
+Vector2 Vector2Zero()
+{
+    return Vector2(0, 0);
+}
 
 // Vector with components value 1.0f
 Vector2 Vector2One ();
