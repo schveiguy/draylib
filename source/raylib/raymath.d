@@ -199,7 +199,10 @@ Vector2 Vector2Zero()
 }
 
 // Vector with components value 1.0f
-Vector2 Vector2One ();
+Vector2 Vector2One()
+{
+    return Vector2(1, 1);
+}
 
 // Add two vectors (v1 + v2)
 Vector2 Vector2Add (Vector2 v1, Vector2 v2);
