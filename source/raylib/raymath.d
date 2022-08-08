@@ -181,12 +181,12 @@ float Normalize (float value, float start, float end)
 }
 
 // Remap input value within input range to output range
-float Remap (
-    float value,
-    float inputStart,
-    float inputEnd,
-    float outputStart,
-    float outputEnd);
+float Remap (float value, float inputStart, float inputEnd, float outputStart, float outputEnd)
+{
+    float result = (value - inputStart) / (inputEnd - inputStart) * (outputEnd - outputStart) + outputStart;
+
+    return result;
+}
 
 //----------------------------------------------------------------------------------
 // Module Functions Definition - Vector2 math
