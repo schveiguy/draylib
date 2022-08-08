@@ -221,7 +221,12 @@ Vector2 Vector2AddValue (Vector2 v, float add)
 }
 
 // Subtract two vectors (v1 - v2)
-Vector2 Vector2Subtract (Vector2 v1, Vector2 v2);
+Vector2 Vector2Subtract (Vector2 v1, Vector2 v2)
+{
+    Vector2 result = { v1.x - v2.x, v1.y - v2.y };
+
+    return result;
+}
 
 // Subtract vector by float value
 Vector2 Vector2SubtractValue (Vector2 v, float sub);
