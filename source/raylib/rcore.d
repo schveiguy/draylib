@@ -15,6 +15,7 @@ version(Windows)
     // define windows-specific functions
     extern(Windows) uint timeBeginPeriod(uint uPeriod);
     extern(Windows) uint timeEndPeriod(uint uPeriod);
+    extern(Windows) void Sleep(cpp_ulong msTimeout);
 }
 
 // port of rcore.c
@@ -1431,19 +1432,19 @@ extern(C) void CloseWindow()
         if (CORE.Window.prevBO)
         {
             gbm_surface_release_buffer(CORE.Window.gbmSurface, CORE.Window.prevBO);
-            CORE.Window.prevBO = NULL;
+            CORE.Window.prevBO = null;
         }
 
         if (CORE.Window.gbmSurface)
         {
             gbm_surface_destroy(CORE.Window.gbmSurface);
-            CORE.Window.gbmSurface = NULL;
+            CORE.Window.gbmSurface = null;
         }
 
         if (CORE.Window.gbmDevice)
         {
             gbm_device_destroy(CORE.Window.gbmDevice);
-            CORE.Window.gbmDevice = NULL;
+            CORE.Window.gbmDevice = null;
         }
 
         if (CORE.Window.crtc)
@@ -1453,11 +1454,11 @@ extern(C) void CloseWindow()
                 drmModeSetCrtc(CORE.Window.fd, CORE.Window.crtc.crtc_id, CORE.Window.crtc.buffer_id,
                                CORE.Window.crtc.x, CORE.Window.crtc.y, &CORE.Window.connector.connector_id, 1, &CORE.Window.crtc.mode);
                 drmModeFreeConnector(CORE.Window.connector);
-                CORE.Window.connector = NULL;
+                CORE.Window.connector = null;
             }
 
             drmModeFreeCrtc(CORE.Window.crtc);
-            CORE.Window.crtc = NULL;
+            CORE.Window.crtc = null;
         }
 
         if (CORE.Window.fd != -1)
@@ -1503,11 +1504,11 @@ extern(C) void CloseWindow()
         {
             if (CORE.Input.eventWorker[i].threadId)
             {
-                pthread_join(CORE.Input.eventWorker[i].threadId, NULL);
+                pthread_join(CORE.Input.eventWorker[i].threadId, null);
             }
         }
 
-        if (CORE.Input.Gamepad.threadId) pthread_join(CORE.Input.Gamepad.threadId, NULL);
+        if (CORE.Input.Gamepad.threadId) pthread_join(CORE.Input.Gamepad.threadId, null);
     }
 
     version(none) { //#if defined(SUPPORT_EVENTS_AUTOMATION)
@@ -2296,4 +2297,328 @@ private extern(C) void KeyCallback(GLFWwindow *window, int key, int scancode, in
             TraceLog(TraceLogLevel.LOG_WARNING, "eventsPlaying enabled!");
         }
     }
+}
+
+/// Get number of monitors
+extern(C) int GetMonitorCount() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        int monitorCount;
+        glfwGetMonitors(&monitorCount);
+        return monitorCount;
+    }
+
+    else { 
+        return 1;
+    }
+}
+
+/// Get number of monitors
+extern(C) int GetCurrentMonitor() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        int monitorCount;
+        GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+        GLFWmonitor* monitor = null;
+
+        if (monitorCount == 1) // easy out
+            return 0;
+
+        if (IsWindowFullscreen())
+        {
+            monitor = glfwGetWindowMonitor(CORE.Window.handle);
+            for (int i = 0; i < monitorCount; i++)
+            {
+                if (monitors[i] == monitor)
+                    return i;
+            }
+            return 0;
+        }
+        else
+        {
+            int x = 0;
+            int y = 0;
+
+            glfwGetWindowPos(CORE.Window.handle, &x, &y);
+
+            for (int i = 0; i < monitorCount; i++)
+            {
+                int mx = 0;
+                int my = 0;
+
+                int width = 0;
+                int height = 0;
+
+                monitor = monitors[i];
+                glfwGetMonitorWorkarea(monitor, &mx, &my, &width, &height);
+                if (x >= mx && x <= (mx + width) && y >= my && y <= (my + height))
+                    return i;
+            }
+        }
+        return 0;
+    }
+
+    else {
+        return 0;
+    }
+}
+
+// Get selected monitor width
+extern(C) Vector2 GetMonitorPosition(int monitor) nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        int monitorCount;
+        GLFWmonitor** monitors = glfwGetMonitors(&monitorCount);
+
+        if ((monitor >= 0) && (monitor < monitorCount))
+        {
+            int x, y;
+            glfwGetMonitorPos(monitors[monitor], &x, &y);
+
+            return Vector2( x, y );
+        }
+        else TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Failed to find selected monitor");
+    }
+    return Vector2(0, 0);
+}
+
+// Get selected monitor width (max available by monitor)
+extern(C) int GetMonitorWidth(int monitor) nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        int monitorCount;
+        GLFWmonitor **monitors = glfwGetMonitors(&monitorCount);
+
+        if ((monitor >= 0) && (monitor < monitorCount))
+        {
+            int count = 0;
+            const GLFWvidmode *modes = glfwGetVideoModes(monitors[monitor], &count);
+
+            // We return the maximum resolution available, the last one in the modes array
+            if (count > 0) return modes[count - 1].width;
+            else TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Failed to find video mode for selected monitor");
+        }
+        else TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Failed to find selected monitor");
+    }
+    return 0;
+}
+
+// Get selected monitor width (max available by monitor)
+extern(C) int GetMonitorHeight(int monitor) nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        int monitorCount;
+        GLFWmonitor **monitors = glfwGetMonitors(&monitorCount);
+
+        if ((monitor >= 0) && (monitor < monitorCount))
+        {
+            int count = 0;
+            const GLFWvidmode *modes = glfwGetVideoModes(monitors[monitor], &count);
+
+            // We return the maximum resolution available, the last one in the modes array
+            if (count > 0) return modes[count - 1].height;
+            else TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Failed to find video mode for selected monitor");
+        }
+        else TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Failed to find selected monitor");
+    }
+    return 0;
+}
+
+// Get selected monitor physical width in millimetres
+extern(C) int GetMonitorPhysicalWidth(int monitor) nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        int monitorCount;
+        GLFWmonitor **monitors = glfwGetMonitors(&monitorCount);
+
+        if ((monitor >= 0) && (monitor < monitorCount))
+        {
+            int physicalWidth;
+            glfwGetMonitorPhysicalSize(monitors[monitor], &physicalWidth, null);
+            return physicalWidth;
+        }
+        else TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Failed to find selected monitor");
+    }
+    return 0;
+}
+
+// Get primary monitor physical height in millimetres
+extern(C) int GetMonitorPhysicalHeight(int monitor) nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        int monitorCount;
+        GLFWmonitor **monitors = glfwGetMonitors(&monitorCount);
+
+        if ((monitor >= 0) && (monitor < monitorCount))
+        {
+            int physicalHeight;
+            glfwGetMonitorPhysicalSize(monitors[monitor], null, &physicalHeight);
+            return physicalHeight;
+        }
+        else TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Failed to find selected monitor");
+    }
+    return 0;
+}
+
+extern(C) int GetMonitorRefreshRate(int monitor) nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        int monitorCount;
+        GLFWmonitor **monitors = glfwGetMonitors(&monitorCount);
+
+        if ((monitor >= 0) && (monitor < monitorCount))
+        {
+            const GLFWvidmode *vidmode = glfwGetVideoMode(monitors[monitor]);
+            return vidmode.refreshRate;
+        }
+        else TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Failed to find selected monitor");
+    }
+    version(none) { // #if defined(PLATFORM_DRM)
+        if ((CORE.Window.connector) && (CORE.Window.modeIndex >= 0))
+        {
+            return CORE.Window.connector.modes[CORE.Window.modeIndex].vrefresh;
+        }
+    }
+    return 0;
+}
+
+/// Get window position XY on monitor
+extern(C)Vector2 GetWindowPosition() nothrow @nogc
+{
+    int x = 0;
+    int y = 0;
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        glfwGetWindowPos(CORE.Window.handle, &x, &y);
+    }
+    return Vector2(x, y);
+}
+
+/// Get window scale DPI factor
+extern(C) Vector2 GetWindowScaleDPI() nothrow @nogc
+{
+    Vector2 scale = Vector2( 1.0f, 1.0f );
+
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        float xdpi = 1.0;
+        float ydpi = 1.0;
+        Vector2 windowPos = GetWindowPosition();
+
+        int monitorCount = 0;
+        GLFWmonitor **monitors = glfwGetMonitors(&monitorCount);
+
+        // Check window monitor
+        for (int i = 0; i < monitorCount; i++)
+        {
+            glfwGetMonitorContentScale(monitors[i], &xdpi, &ydpi);
+
+            int xpos, ypos, width, height;
+            glfwGetMonitorWorkarea(monitors[i], &xpos, &ypos, &width, &height);
+
+            if ((windowPos.x >= xpos) && (windowPos.x < xpos + width) &&
+                (windowPos.y >= ypos) && (windowPos.y < ypos + height))
+            {
+                scale.x = xdpi;
+                scale.y = ydpi;
+                break;
+            }
+        }
+    }
+
+    return scale;
+}
+
+/// Get the human-readable, UTF-8 encoded name of the primary monitor
+extern(C) const(char) *GetMonitorName(int monitor) nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        int monitorCount;
+        GLFWmonitor **monitors = glfwGetMonitors(&monitorCount);
+
+        if ((monitor >= 0) && (monitor < monitorCount))
+        {
+            return glfwGetMonitorName(monitors[monitor]);
+        }
+        else TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Failed to find selected monitor");
+    }
+    return "";
+}
+
+/// Get clipboard text content
+/// NOTE: returned string is allocated and freed by GLFW
+extern(C) const(char) *GetClipboardText() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        return glfwGetClipboardString(CORE.Window.handle);
+    }
+
+    else {
+        return null;
+    }
+}
+
+/// Set clipboard text content
+extern(C) void SetClipboardText(const char *text) nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        glfwSetClipboardString(CORE.Window.handle, text);
+    }
+}
+
+/// Show mouse cursor
+extern(C) void ShowCursor() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        glfwSetInputMode(CORE.Window.handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+
+    CORE.Input.Mouse.cursorHidden = false;
+}
+
+/// Hides mouse cursor
+extern(C) void HideCursor() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        glfwSetInputMode(CORE.Window.handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    }
+
+    CORE.Input.Mouse.cursorHidden = true;
+}
+
+/// Check if cursor is not visible
+extern(C) bool IsCursorHidden() nothrow @nogc
+{
+    return CORE.Input.Mouse.cursorHidden;
+}
+
+// Enables cursor (unlock cursor)
+extern(C) void EnableCursor() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        glfwSetInputMode(CORE.Window.handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+
+    version(none) { // #if defined(PLATFORM_WEB)
+        emscripten_exit_pointerlock();
+    }
+
+    CORE.Input.Mouse.cursorHidden = false;
+}
+
+/// Disables cursor (lock cursor)
+extern(C) void DisableCursor() nothrow @nogc
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        glfwSetInputMode(CORE.Window.handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+    version(none) { // #if defined(PLATFORM_WEB)
+        emscripten_request_pointerlock("#canvas", 1);
+    }
+
+    CORE.Input.Mouse.cursorHidden = true;
+}
+
+// Check if cursor is on the current screen.
+extern(C) bool IsCursorOnScreen() nothrow @nogc
+{
+    return CORE.Input.Mouse.cursorOnScreen;
 }

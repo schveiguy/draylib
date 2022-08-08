@@ -606,9 +606,9 @@ extern void UnloadFontDefault(void);        // [Module: text] Unloads default fo
 //----------------------------------------------------------------------------------
 // Module specific Functions Declaration
 //----------------------------------------------------------------------------------
-void InitTimer(void);                            // Initialize timer (hi-resolution if available)
-bool InitGraphicsDevice(int width, int height);  // Initialize graphics device
-void SetupFramebuffer(int width, int height);    // Setup main framebuffer
+//void InitTimer(void);                            // Initialize timer (hi-resolution if available)
+//bool InitGraphicsDevice(int width, int height);  // Initialize graphics device
+//void SetupFramebuffer(int width, int height);    // Setup main framebuffer
 void SetupViewport(int width, int height);       // Set viewport for a provided width and height
 
 #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
@@ -623,7 +623,7 @@ void SetupViewport(int width, int height);       // Set viewport for a provided 
 //static void WindowFocusCallback(GLFWwindow *window, int focused);                          // GLFW3 WindowFocus Callback, runs when window get/lose focus
 //static void WindowDropCallback(GLFWwindow *window, int count, const char **paths);         // GLFW3 Window Drop Callback, runs when drop files into window
 // Input callbacks events
-void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);  // GLFW3 Keyboard Callback, runs on key pressed
+//void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);  // GLFW3 Keyboard Callback, runs on key pressed
 //static void CharCallback(GLFWwindow *window, unsigned int key);                            // GLFW3 Char Key Callback, runs on key pressed (get char value)
 //void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods);     // GLFW3 Mouse Button Callback, runs on mouse button pressed
 //void MouseCursorPosCallback(GLFWwindow *window, double x, double y);                // GLFW3 Cursor Position Callback, runs on mouse move
@@ -703,9 +703,9 @@ struct android_app *GetAndroidApp(void)
 }
 #endif
 
+#if 0 // in D
 // Initialize window and OpenGL context
 // NOTE: data parameter could be used to pass any kind of required data to the initialization
-#if 0 // in D
 void InitWindow(int width, int height, const char *title)
 {
     TRACELOG(LOG_INFO, "Initializing raylib %s", RAYLIB_VERSION);
@@ -866,10 +866,8 @@ void InitWindow(int width, int height, const char *title)
 
 #endif        // PLATFORM_DESKTOP || PLATFORM_WEB || PLATFORM_RPI || PLATFORM_DRM
 }
-#endif
 
 // Close window and unload OpenGL context
-#if 0 // in D
 void CloseWindow(void)
 {
 #if defined(SUPPORT_GIF_RECORDING)
@@ -1016,9 +1014,7 @@ void CloseWindow(void)
     CORE.Window.ready = false;
     TRACELOG(LOG_INFO, "Window closed successfully");
 }
-#endif
 
-#if 0 // in D
 // Check if KEY_ESCAPE pressed or Close icon pressed
 bool WindowShouldClose(void)
 {
@@ -1230,9 +1226,7 @@ void ToggleFullscreen(void)
     TRACELOG(LOG_WARNING, "SYSTEM: Failed to toggle to windowed mode");
 #endif
 }
-#endif
 
-#if 0 // in D
 // Set window state: maximized, if resizable (only PLATFORM_DESKTOP)
 void MaximizeWindow(void)
 {
@@ -1551,9 +1545,7 @@ void SetWindowSize(int width, int height)
     //emscripten_set_element_css_size("canvas", width, height);
 #endif
 }
-#endif
 
-#if 0 // in D
 // Get current screen width
 int GetScreenWidth(void)
 {
@@ -1599,7 +1591,6 @@ void *GetWindowHandle(void)
 
     return NULL;
 }
-#endif
 
 // Get number of monitors
 int GetMonitorCount(void)
@@ -1917,6 +1908,7 @@ bool IsCursorOnScreen(void)
 {
     return CORE.Input.Mouse.cursorOnScreen;
 }
+#endif
 
 // Set background color (framebuffer clear color)
 void ClearBackground(Color color)
