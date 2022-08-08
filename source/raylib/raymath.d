@@ -155,7 +155,14 @@ struct float16
 //----------------------------------------------------------------------------------
 
 // Clamp float value
-float Clamp (float value, float min, float max);
+float Clamp (float value, float min, float max)
+{
+    float result = value < min ? min : value;
+
+    if (result > max) result = max;
+
+    return result;
+}
 
 // Calculate linear interpolation between two floats
 float Lerp (float start, float end, float amount);
