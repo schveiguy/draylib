@@ -213,7 +213,12 @@ Vector2 Vector2Add (Vector2 v1, Vector2 v2)
 }
 
 // Add vector and float value
-Vector2 Vector2AddValue (Vector2 v, float add);
+Vector2 Vector2AddValue (Vector2 v, float add)
+{
+    Vector2 result = { v.x + add, v.y + add };
+
+    return result;
+}
 
 // Subtract two vectors (v1 - v2)
 Vector2 Vector2Subtract (Vector2 v1, Vector2 v2);
