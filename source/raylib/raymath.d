@@ -265,7 +265,12 @@ float Vector2LengthSqr (Vector2 v)
 }
 
 // Calculate two vectors dot product
-float Vector2DotProduct (Vector2 v1, Vector2 v2);
+float Vector2DotProduct (Vector2 v1, Vector2 v2)
+{
+    float result = v1.x * v2.x + v1.y * v2.y;
+
+    return result;
+}
 
 // Calculate distance between two vectors
 float Vector2Distance (Vector2 v1, Vector2 v2);
