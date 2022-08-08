@@ -229,7 +229,12 @@ Vector2 Vector2Subtract (Vector2 v1, Vector2 v2)
 }
 
 // Subtract vector by float value
-Vector2 Vector2SubtractValue (Vector2 v, float sub);
+Vector2 Vector2SubtractValue (Vector2 v, float sub)
+{
+    Vector2 result = { v.x - sub, v.y - sub };
+
+    return result;
+}
 
 // Calculate vector length
 float Vector2Length (Vector2 v);
