@@ -1908,7 +1908,6 @@ bool IsCursorOnScreen(void)
 {
     return CORE.Input.Mouse.cursorOnScreen;
 }
-#endif
 
 // Set background color (framebuffer clear color)
 void ClearBackground(Color color)
@@ -2231,6 +2230,7 @@ void EndVrStereoMode(void)
 {
     rlDisableStereoRender();
 }
+#endif
 
 // Load VR stereo config for VR simulator device parameters
 VrStereoConfig LoadVrStereoConfig(VrDeviceInfo device)
