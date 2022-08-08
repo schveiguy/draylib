@@ -165,7 +165,12 @@ float Clamp (float value, float min, float max)
 }
 
 // Calculate linear interpolation between two floats
-float Lerp (float start, float end, float amount);
+float Lerp (float start, float end, float amount)
+{
+    float result = start + amount * (end - start);
+
+    return result;
+}
 
 // Normalize input value within input range
 float Normalize (float value, float start, float end);
