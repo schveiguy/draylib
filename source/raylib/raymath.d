@@ -173,7 +173,12 @@ float Lerp (float start, float end, float amount)
 }
 
 // Normalize input value within input range
-float Normalize (float value, float start, float end);
+float Normalize (float value, float start, float end)
+{
+    float result = (value - start) / (end - start);
+
+    return result;
+}
 
 // Remap input value within input range to output range
 float Remap (
