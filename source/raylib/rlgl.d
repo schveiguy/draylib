@@ -155,18 +155,20 @@ enum RL_DEFAULT_BATCH_DRAWCALLS = 256; // Default number of batch draw calls (by
 enum RL_DEFAULT_BATCH_MAX_TEXTURE_UNITS = 4; // Maximum number of textures units that can be activated on batch drawing (SetShaderValueTexture())
 
 // Internal Matrix stack
+public import raylib.config : RL_MAX_MATRIX_STACK_SIZE, RL_MAX_SHADER_LOCATIONS,
+       RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR;
 
-enum RL_MAX_MATRIX_STACK_SIZE = 32; // Maximum size of Matrix stack
+//enum RL_MAX_MATRIX_STACK_SIZE = 32; // Maximum size of Matrix stack
 
 // Shader limits
 
-enum RL_MAX_SHADER_LOCATIONS = 32; // Maximum number of shader locations supported
+//enum RL_MAX_SHADER_LOCATIONS = 32; // Maximum number of shader locations supported
 
 // Projection matrix culling
 
-enum RL_CULL_DISTANCE_NEAR = 0.01; // Default near cull distance
+//enum RL_CULL_DISTANCE_NEAR = 0.01; // Default near cull distance
 
-enum RL_CULL_DISTANCE_FAR = 1000.0; // Default far cull distance
+//enum RL_CULL_DISTANCE_FAR = 1000.0; // Default far cull distance
 
 // Texture parameters (equivalent to OpenGL defines)
 enum RL_TEXTURE_WRAP_S = 0x2802; // GL_TEXTURE_WRAP_S
