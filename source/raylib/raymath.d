@@ -205,7 +205,12 @@ Vector2 Vector2One()
 }
 
 // Add two vectors (v1 + v2)
-Vector2 Vector2Add (Vector2 v1, Vector2 v2);
+Vector2 Vector2Add (Vector2 v1, Vector2 v2)
+{
+    Vector2 result = { v1.x + v2.x, v1.y + v2.y };
+
+    return result;
+}
 
 // Add vector and float value
 Vector2 Vector2AddValue (Vector2 v, float add);
