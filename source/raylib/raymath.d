@@ -273,7 +273,12 @@ float Vector2DotProduct (Vector2 v1, Vector2 v2)
 }
 
 // Calculate distance between two vectors
-float Vector2Distance (Vector2 v1, Vector2 v2);
+float Vector2Distance (Vector2 v1, Vector2 v2)
+{
+    float result = sqrtf((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y));
+
+    return result;
+}
 
 // Calculate angle from two vectors in X-axis
 float Vector2Angle (Vector2 v1, Vector2 v2);
