@@ -299,7 +299,12 @@ Vector2 Vector2Scale (Vector2 v, float scale)
 }
 
 // Multiply vector by vector
-Vector2 Vector2Multiply (Vector2 v1, Vector2 v2);
+Vector2 Vector2Multiply (Vector2 v1, Vector2 v2)
+{
+    Vector2 result = { v1.x * v2.x, v1.y * v2.y };
+
+    return result;
+}
 
 // Negate vector
 Vector2 Vector2Negate (Vector2 v);
