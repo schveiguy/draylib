@@ -307,7 +307,12 @@ Vector2 Vector2Multiply (Vector2 v1, Vector2 v2)
 }
 
 // Negate vector
-Vector2 Vector2Negate (Vector2 v);
+Vector2 Vector2Negate (Vector2 v)
+{
+    Vector2 result = { -v.x, -v.y };
+
+    return result;
+}
 
 // Divide vector by vector
 Vector2 Vector2Divide (Vector2 v1, Vector2 v2);
