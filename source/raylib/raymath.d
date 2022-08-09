@@ -291,7 +291,12 @@ float Vector2Angle (Vector2 v1, Vector2 v2)
 }
 
 // Scale vector (multiply by value)
-Vector2 Vector2Scale (Vector2 v, float scale);
+Vector2 Vector2Scale (Vector2 v, float scale)
+{
+    Vector2 result = { v.x * scale, v.y * scale };
+
+    return result;
+}
 
 // Multiply vector by vector
 Vector2 Vector2Multiply (Vector2 v1, Vector2 v2);
