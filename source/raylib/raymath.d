@@ -315,7 +315,12 @@ Vector2 Vector2Negate (Vector2 v)
 }
 
 // Divide vector by vector
-Vector2 Vector2Divide (Vector2 v1, Vector2 v2);
+Vector2 Vector2Divide (Vector2 v1, Vector2 v2)
+{
+    Vector2 result = { v1.x / v2.x, v1.y / v2.y };
+
+    return result;
+}
 
 // Normalize provided vector
 Vector2 Vector2Normalize (Vector2 v);
