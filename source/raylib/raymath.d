@@ -281,7 +281,14 @@ float Vector2Distance (Vector2 v1, Vector2 v2)
 }
 
 // Calculate angle from two vectors in X-axis
-float Vector2Angle (Vector2 v1, Vector2 v2);
+float Vector2Angle (Vector2 v1, Vector2 v2)
+{
+    float result = atan2f(v2.y - v1.y, v2.x - v1.x) * (180.0f / PI);
+
+    if (result < 0) result += 360.0f;
+
+    return result;
+}
 
 // Scale vector (multiply by value)
 Vector2 Vector2Scale (Vector2 v, float scale);
