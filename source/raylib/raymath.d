@@ -323,7 +323,19 @@ Vector2 Vector2Divide (Vector2 v1, Vector2 v2)
 }
 
 // Normalize provided vector
-Vector2 Vector2Normalize (Vector2 v);
+Vector2 Vector2Normalize (Vector2 v)
+{
+    Vector2 result = { 0 };
+    float length = sqrtf(v.x * v.x + v.y * v.y);
+
+    if (length > 0)
+    {
+        result.x = v.x * 1.0f / length;
+        result.y = v.y * 1.0f / length;
+    }
+
+    return result;
+}
 
 // Calculate linear interpolation between two vectors
 Vector2 Vector2Lerp (Vector2 v1, Vector2 v2, float amount);
