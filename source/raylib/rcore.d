@@ -5,16 +5,22 @@ import raylib.config;
 import raylib.raymath;
 import raylib.rgestures;
 import raylib.rlgl;
-import core.stdc.stdlib;
-import core.sys.posix.sys.time;
-import core.stdc.math;
 import raylib.external.msf_gif;
+
+import core.stdc.stdlib;
+import core.stdc.math;
+import core.stdc.string;
+import core.sys.posix.sys.time;
 
 // define allocation functions
 alias RL_MALLOC = malloc;
 alias RL_CALLOC = calloc;
 alias RL_REALLOC = realloc;
 alias RL_FREE = free;
+
+// for now, make everything extern(C) nothrow and @nogc
+
+extern(C) nothrow @nogc:
 
 version(Windows)
 {
@@ -36,8 +42,8 @@ enum MAX_KEY_PRESSED_QUEUE = 16;     // Maximum number of keys in the key input 
 enum MAX_CHAR_PRESSED_QUEUE = 16;    // Maximum number of characters in the char input queue
 
 version(all) { // #if defined(SUPPORT_DEFAULT_FONT)
-    extern(C) void LoadFontDefault() nothrow @nogc;          // [Module: text] Loads default font on InitWindow()
-    extern(C) void UnloadFontDefault() nothrow @nogc;        // [Module: text] Unloads default font from GPU memory
+    void LoadFontDefault();          // [Module: text] Loads default font on InitWindow()
+    void UnloadFontDefault();        // [Module: text] Unloads default font from GPU memory
 }
 
 //----------------------------------------------------------------------------------
@@ -206,7 +212,7 @@ private struct CoreData {
 
 // easy way to export for C
 mixin template ExportForC(string item) {
-    mixin(`private extern(C) auto _get_` ~ item ~ `() { return &` ~ item ~ `;}`);
+    mixin(`private auto _get_` ~ item ~ `() { return &` ~ item ~ `;}`);
 }
 
 private __gshared CoreData CORE;
@@ -224,7 +230,7 @@ version(all) { // #if defined(SUPPORT_SCREEN_CAPTURE)
 
 /// Initialize window and OpenGL context
 /// NOTE: data parameter could be used to pass any kind of required data to the initialization
-extern(C) void InitWindow(int width, int height, const(char)*title) nothrow @nogc
+void InitWindow(int width, int height, const(char)* title)
 {
     TraceLog(TraceLogLevel.LOG_INFO, "Initializing raylib (D port) %s", RAYLIB_VERSION.ptr);
     // initialize the D glfw library if dynamically loaded (this isn't used at the moment)
@@ -405,7 +411,7 @@ extern(C) void InitWindow(int width, int height, const(char)*title) nothrow @nog
     }        // PLATFORM_DESKTOP || PLATFORM_WEB || PLATFORM_RPI || PLATFORM_DRM
 }
 
-extern(C) private bool InitGraphicsDevice(int width, int height) nothrow @nogc
+private bool InitGraphicsDevice(int width, int height)
 {
     CORE.Window.screen.width = width;            // User desired width
     CORE.Window.screen.height = height;          // User desired height
@@ -1165,7 +1171,7 @@ extern(C) private bool InitGraphicsDevice(int width, int height) nothrow @nogc
 }
 
 // Set viewport for a provided width and height
-private extern(C) void SetupViewport(int width, int height) nothrow @nogc
+private void SetupViewport(int width, int height)
 {
     CORE.Window.render.width = width;
     CORE.Window.render.height = height;
@@ -1195,14 +1201,14 @@ private extern(C) void SetupViewport(int width, int height) nothrow @nogc
 
 // GLFW3 Error Callback, runs on GLFW3 error
 version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
-    private extern(C) void ErrorCallback(int error, const char *description) nothrow @nogc
+    private void ErrorCallback(int error, const char *description)
     {
         TraceLog(TraceLogLevel.LOG_WARNING, "GLFW: Error: %i Description: %s", error, description);
     }
 }
 // GLFW3 WindowSize Callback, runs when window is resizedLastFrame
 // NOTE: Window resizing not allowed by default
-private extern(C) void WindowSizeCallback(GLFWwindow *window, int width, int height) nothrow @nogc
+private void WindowSizeCallback(GLFWwindow *window, int width, int height)
 {
     // Reset viewport and projection matrix for new size
     SetupViewport(width, height);
@@ -1237,7 +1243,7 @@ private extern(C) void WindowSizeCallback(GLFWwindow *window, int width, int hei
 
 version(all) { // #if !defined(PLATFORM_WEB)
     // GLFW3 WindowMaximize Callback, runs when window is maximized/restored
-    private extern(C) void WindowMaximizeCallback(GLFWwindow *window, int maximized) nothrow @nogc
+    private void WindowMaximizeCallback(GLFWwindow *window, int maximized)
     {
         if (maximized) CORE.Window.flags |= ConfigFlags.FLAG_WINDOW_MAXIMIZED;  // The window was maximized
         else CORE.Window.flags &= ~ConfigFlags.FLAG_WINDOW_MAXIMIZED;           // The window was restored
@@ -1245,14 +1251,14 @@ version(all) { // #if !defined(PLATFORM_WEB)
 }
 
 // GLFW3 WindowIconify Callback, runs when window is minimized/restored
-private extern(C) void WindowIconifyCallback(GLFWwindow *window, int iconified) @nogc nothrow
+private void WindowIconifyCallback(GLFWwindow *window, int iconified) @nogc nothrow
 {
     if (iconified) CORE.Window.flags |= ConfigFlags.FLAG_WINDOW_MINIMIZED;  // The window was iconified
     else CORE.Window.flags &= ~ConfigFlags.FLAG_WINDOW_MINIMIZED;           // The window was restored
 }
 
 // GLFW3 WindowFocus Callback, runs when window get/lose focus
-private extern(C) void WindowFocusCallback(GLFWwindow *window, int focused) @nogc nothrow
+private void WindowFocusCallback(GLFWwindow *window, int focused) @nogc nothrow
 {
     if (focused) CORE.Window.flags &= ~ConfigFlags.FLAG_WINDOW_UNFOCUSED;   // The window was focused
     else CORE.Window.flags |= ConfigFlags.FLAG_WINDOW_UNFOCUSED;            // The window lost focus
@@ -1261,7 +1267,7 @@ private extern(C) void WindowFocusCallback(GLFWwindow *window, int focused) @nog
 // GLFW3 Window Drop Callback, runs when drop files into window
 // NOTE: Paths are stored in dynamic memory for further retrieval
 // Everytime new files are dropped, old ones are discarded
-private extern(C) void WindowDropCallback(GLFWwindow *window, int count, const(char *)*paths) nothrow @nogc
+private void WindowDropCallback(GLFWwindow *window, int count, const(char *)*paths)
 {
     import core.stdc.stdlib;
     import core.stdc.string;
@@ -1279,7 +1285,7 @@ private extern(C) void WindowDropCallback(GLFWwindow *window, int count, const(c
 }
 
 // GLFW3 Char Key Callback, runs on key down (gets equivalent unicode char value)
-private extern(C) void CharCallback(GLFWwindow *window, uint key) nothrow @nogc
+private void CharCallback(GLFWwindow *window, uint key)
 {
     //TraceLog(LOG_DEBUG, "Char Callback: KEY:%i(%c)", key, key);
 
@@ -1298,7 +1304,7 @@ private extern(C) void CharCallback(GLFWwindow *window, uint key) nothrow @nogc
 }
 
 // GLFW3 Mouse Button Callback, runs on mouse button pressed
-private extern(C) void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods) nothrow @nogc
+private void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 {
     // WARNING: GLFW could only return GLFW_PRESS (1) or GLFW_RELEASE (0) for now,
     // but future releases may add more actions (i.e. GLFW_REPEAT)
@@ -1333,7 +1339,7 @@ private extern(C) void MouseButtonCallback(GLFWwindow *window, int button, int a
 }
 
 // GLFW3 Cursor Position Callback, runs on mouse move
-private extern(C) void MouseCursorPosCallback(GLFWwindow *window, double x, double y) nothrow @nogc
+private void MouseCursorPosCallback(GLFWwindow *window, double x, double y)
 {
     CORE.Input.Mouse.currentPosition.x = x;
     CORE.Input.Mouse.currentPosition.y = y;
@@ -1364,14 +1370,14 @@ private extern(C) void MouseCursorPosCallback(GLFWwindow *window, double x, doub
 }
 
 // GLFW3 Srolling Callback, runs on mouse wheel
-private extern(C) void MouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset) nothrow @nogc
+private void MouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset)
 {
     if (xoffset != 0.0) CORE.Input.Mouse.currentWheelMove = xoffset;
     else CORE.Input.Mouse.currentWheelMove = yoffset;
 }
 
 // GLFW3 CursorEnter Callback, when cursor enters the window
-private extern(C) void CursorEnterCallback(GLFWwindow *window, int enter) nothrow @nogc
+private void CursorEnterCallback(GLFWwindow *window, int enter)
 {
     if (enter == true) CORE.Input.Mouse.cursorOnScreen = true;
     else CORE.Input.Mouse.cursorOnScreen = false;
@@ -1379,7 +1385,7 @@ private extern(C) void CursorEnterCallback(GLFWwindow *window, int enter) nothro
 
 
 /// Close window and unload OpenGL context
-extern(C) void CloseWindow()
+void CloseWindow()
 {
     version(all) { //#if defined(SUPPORT_GIF_RECORDING)
         if (gifRecording)
@@ -1526,7 +1532,7 @@ extern(C) void CloseWindow()
 }
 
 /// Check if KEY_ESCAPE pressed or Close icon pressed
-extern(C) bool WindowShouldClose() nothrow @nogc
+bool WindowShouldClose()
 {
     version(none) { // #if defined(PLATFORM_WEB)
         // Emterpreter-Async required to run sync code
@@ -1561,19 +1567,19 @@ extern(C) bool WindowShouldClose() nothrow @nogc
 }
 
 /// Check if window has been initialized successfully
-extern(C) bool IsWindowReady() nothrow @nogc
+bool IsWindowReady()
 {
     return CORE.Window.ready;
 }
 
 /// Check if window is currently fullscreen
-extern(C) bool IsWindowFullscreen() nothrow @nogc
+bool IsWindowFullscreen()
 {
     return CORE.Window.fullscreen;
 }
 
 /// Check if window is currently hidden
-extern(C) bool IsWindowHidden() nothrow @nogc
+bool IsWindowHidden()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         return ((CORE.Window.flags & ConfigFlags.FLAG_WINDOW_HIDDEN) > 0);
@@ -1584,7 +1590,7 @@ extern(C) bool IsWindowHidden() nothrow @nogc
 }
 
 /// Check if window has been minimized
-extern(C) bool IsWindowMinimized() nothrow @nogc
+bool IsWindowMinimized()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
         return ((CORE.Window.flags & ConfigFlags.FLAG_WINDOW_MINIMIZED) > 0);
@@ -1595,7 +1601,7 @@ extern(C) bool IsWindowMinimized() nothrow @nogc
 }
 
 /// Check if window has been maximized (only PLATFORM_DESKTOP)
-extern(C) bool IsWindowMaximized() nothrow @nogc
+bool IsWindowMaximized()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         return ((CORE.Window.flags & ConfigFlags.FLAG_WINDOW_MAXIMIZED) > 0);
@@ -1606,7 +1612,7 @@ extern(C) bool IsWindowMaximized() nothrow @nogc
 }
 
 /// Check if window has the focus
-extern(C) bool IsWindowFocused() nothrow @nogc
+bool IsWindowFocused()
 {
     version(all) { //#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
         return ((CORE.Window.flags & ConfigFlags.FLAG_WINDOW_UNFOCUSED) == 0);
@@ -1617,7 +1623,7 @@ extern(C) bool IsWindowFocused() nothrow @nogc
 }
 
 /// Check if window has been resizedLastFrame
-extern(C) bool IsWindowResized() nothrow @nogc
+bool IsWindowResized()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
         return CORE.Window.resizedLastFrame;
@@ -1628,13 +1634,13 @@ extern(C) bool IsWindowResized() nothrow @nogc
 }
 
 /// Check if one specific window flag is enabled
-extern(C) bool IsWindowState(uint flag) nothrow @nogc
+bool IsWindowState(uint flag)
 {
     return ((CORE.Window.flags & flag) > 0);
 }
 
 /// Toggle fullscreen mode (only PLATFORM_DESKTOP)
-extern(C) void ToggleFullscreen() nothrow @nogc
+void ToggleFullscreen()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
                    // NOTE: glfwSetWindowMonitor() doesn't work properly (bugs)
@@ -1746,31 +1752,31 @@ extern(C) void ToggleFullscreen() nothrow @nogc
 
 
 /// Get current screen width
-extern(C) int GetScreenWidth() nothrow @nogc
+int GetScreenWidth()
 {
     return CORE.Window.screen.width;
 }
 
 /// Get current screen height
-extern(C) int GetScreenHeight() nothrow @nogc
+int GetScreenHeight()
 {
     return CORE.Window.screen.height;
 }
 
 /// Get current render width which is equal to screen width * dpi scale
-extern(C) int GetRenderWidth() nothrow @nogc
+int GetRenderWidth()
 {
     return CORE.Window.render.width;
 }
 
 /// Get current screen height which is equal to screen height * dpi scale
-extern(C) int GetRenderHeight() nothrow @nogc
+int GetRenderHeight()
 {
     return CORE.Window.render.height;
 }
 
 /// Set window state: maximized, if resizable (only PLATFORM_DESKTOP)
-extern(C) void MaximizeWindow() nothrow @nogc
+void MaximizeWindow()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         if (glfwGetWindowAttrib(CORE.Window.handle, GLFW_RESIZABLE) == GLFW_TRUE)
@@ -1782,7 +1788,7 @@ extern(C) void MaximizeWindow() nothrow @nogc
 }
 
 /// Set window state: minimized (only PLATFORM_DESKTOP)
-extern(C) void MinimizeWindow() nothrow @nogc
+void MinimizeWindow()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         // NOTE: Following function launches callback that sets appropiate flag!
@@ -1791,7 +1797,7 @@ extern(C) void MinimizeWindow() nothrow @nogc
 }
 
 /// Set window state: not minimized/maximized (only PLATFORM_DESKTOP)
-extern(C) void RestoreWindow() nothrow @nogc
+void RestoreWindow()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         if (glfwGetWindowAttrib(CORE.Window.handle, GLFW_RESIZABLE) == GLFW_TRUE)
@@ -1805,7 +1811,7 @@ extern(C) void RestoreWindow() nothrow @nogc
 }
 
 /// Set window configuration state using flags
-extern(C) void SetWindowState(uint flags) nothrow @nogc
+void SetWindowState(uint flags)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         // Check previous state and requested state to apply required changes
@@ -1908,7 +1914,7 @@ extern(C) void SetWindowState(uint flags) nothrow @nogc
 }
 
 /// Clear window configuration state flags
-extern(C) void ClearWindowState(uint flags) nothrow @nogc
+void ClearWindowState(uint flags)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         // Check previous state and requested state to apply required changes
@@ -2010,7 +2016,7 @@ extern(C) void ClearWindowState(uint flags) nothrow @nogc
 
 /// Set icon for window (only PLATFORM_DESKTOP)
 /// NOTE: Image must be in RGBA format, 8bit per channel
-extern(C) void SetWindowIcon(Image image) nothrow @nogc
+void SetWindowIcon(Image image)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         if (image.format == PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
@@ -2030,7 +2036,7 @@ extern(C) void SetWindowIcon(Image image) nothrow @nogc
 }
 
 /// Set title for window (only PLATFORM_DESKTOP)
-extern(C) void SetWindowTitle(const char *title) nothrow @nogc
+void SetWindowTitle(const char *title)
 {
     CORE.Window.title = title;
     version(all) { // #if defined(PLATFORM_DESKTOP)
@@ -2039,7 +2045,7 @@ extern(C) void SetWindowTitle(const char *title) nothrow @nogc
 }
 
 /// Set window position on screen (windowed mode)
-extern(C) void SetWindowPosition(int x, int y) nothrow @nogc
+void SetWindowPosition(int x, int y)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         glfwSetWindowPos(CORE.Window.handle, x, y);
@@ -2047,7 +2053,7 @@ extern(C) void SetWindowPosition(int x, int y) nothrow @nogc
 }
 
 /// Set monitor for the current window (fullscreen mode)
-extern(C) void SetWindowMonitor(int monitor) nothrow @nogc
+void SetWindowMonitor(int monitor)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         int monitorCount = 0;
@@ -2065,7 +2071,7 @@ extern(C) void SetWindowMonitor(int monitor) nothrow @nogc
 }
 
 /// Set window minimum dimensions (FLAG_WINDOW_RESIZABLE)
-extern(C) void SetWindowMinSize(int width, int height) nothrow @nogc
+void SetWindowMinSize(int width, int height)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
@@ -2074,7 +2080,7 @@ extern(C) void SetWindowMinSize(int width, int height) nothrow @nogc
 }
 
 /// Get native window handle
-extern(C) void *GetWindowHandle() nothrow @nogc
+void *GetWindowHandle()
 {
     version(Windows) { // #if defined(PLATFORM_DESKTOP) && defined(_WIN32)
         // NOTE: Returned handle is: void *HWND (windows.h)
@@ -2097,7 +2103,7 @@ extern(C) void *GetWindowHandle() nothrow @nogc
 }
 
 /// Set window dimensions
-extern(C) void SetWindowSize(int width, int height) nothrow @nogc
+void SetWindowSize(int width, int height)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
         glfwSetWindowSize(CORE.Window.handle, width, height);
@@ -2113,7 +2119,7 @@ extern(C) void SetWindowSize(int width, int height) nothrow @nogc
 
 // Compute framebuffer size relative to screen size and display size
 // NOTE: Global variables CORE.Window.render.width/CORE.Window.render.height and CORE.Window.renderOffset.x/CORE.Window.renderOffset.y can be modified
-private extern(C) void SetupFramebuffer(int width, int height) nothrow @nogc
+private void SetupFramebuffer(int width, int height)
 {
     // Calculate CORE.Window.render.width and CORE.Window.render.height, we have the display size (input params) and the desired screen size (global var)
     if ((CORE.Window.screen.width > CORE.Window.display.width) || (CORE.Window.screen.height > CORE.Window.display.height))
@@ -2190,7 +2196,7 @@ private extern(C) void SetupFramebuffer(int width, int height) nothrow @nogc
 }
 
 // Initialize hi-resolution timer
-private extern(C) void InitTimer() nothrow @nogc
+private void InitTimer()
 {
 // Setting a higher resolution can improve the accuracy of time-out intervals in wait functions.
 // However, it can also reduce overall system performance, because the thread scheduler switches tasks more often.
@@ -2214,7 +2220,7 @@ private extern(C) void InitTimer() nothrow @nogc
 }
 
 // GLFW3 Keyboard Callback, runs on key pressed
-private extern(C) void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) nothrow @nogc
+private void KeyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     // WARNING: GLFW could return GLFW_REPEAT, we need to consider it as 1
     // to work properly with our implementation (IsKeyDown/IsKeyUp checks)
@@ -2306,7 +2312,7 @@ private extern(C) void KeyCallback(GLFWwindow *window, int key, int scancode, in
 }
 
 /// Get number of monitors
-extern(C) int GetMonitorCount() nothrow @nogc
+int GetMonitorCount()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         int monitorCount;
@@ -2320,7 +2326,7 @@ extern(C) int GetMonitorCount() nothrow @nogc
 }
 
 /// Get number of monitors
-extern(C) int GetCurrentMonitor() nothrow @nogc
+int GetCurrentMonitor()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         int monitorCount;
@@ -2370,7 +2376,7 @@ extern(C) int GetCurrentMonitor() nothrow @nogc
 }
 
 // Get selected monitor width
-extern(C) Vector2 GetMonitorPosition(int monitor) nothrow @nogc
+Vector2 GetMonitorPosition(int monitor)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         int monitorCount;
@@ -2389,7 +2395,7 @@ extern(C) Vector2 GetMonitorPosition(int monitor) nothrow @nogc
 }
 
 // Get selected monitor width (max available by monitor)
-extern(C) int GetMonitorWidth(int monitor) nothrow @nogc
+int GetMonitorWidth(int monitor)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         int monitorCount;
@@ -2410,7 +2416,7 @@ extern(C) int GetMonitorWidth(int monitor) nothrow @nogc
 }
 
 // Get selected monitor width (max available by monitor)
-extern(C) int GetMonitorHeight(int monitor) nothrow @nogc
+int GetMonitorHeight(int monitor)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         int monitorCount;
@@ -2431,7 +2437,7 @@ extern(C) int GetMonitorHeight(int monitor) nothrow @nogc
 }
 
 // Get selected monitor physical width in millimetres
-extern(C) int GetMonitorPhysicalWidth(int monitor) nothrow @nogc
+int GetMonitorPhysicalWidth(int monitor)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         int monitorCount;
@@ -2449,7 +2455,7 @@ extern(C) int GetMonitorPhysicalWidth(int monitor) nothrow @nogc
 }
 
 // Get primary monitor physical height in millimetres
-extern(C) int GetMonitorPhysicalHeight(int monitor) nothrow @nogc
+int GetMonitorPhysicalHeight(int monitor)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         int monitorCount;
@@ -2466,7 +2472,7 @@ extern(C) int GetMonitorPhysicalHeight(int monitor) nothrow @nogc
     return 0;
 }
 
-extern(C) int GetMonitorRefreshRate(int monitor) nothrow @nogc
+int GetMonitorRefreshRate(int monitor)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         int monitorCount;
@@ -2489,7 +2495,7 @@ extern(C) int GetMonitorRefreshRate(int monitor) nothrow @nogc
 }
 
 /// Get window position XY on monitor
-extern(C)Vector2 GetWindowPosition() nothrow @nogc
+extern(C)Vector2 GetWindowPosition()
 {
     int x = 0;
     int y = 0;
@@ -2500,7 +2506,7 @@ extern(C)Vector2 GetWindowPosition() nothrow @nogc
 }
 
 /// Get window scale DPI factor
-extern(C) Vector2 GetWindowScaleDPI() nothrow @nogc
+Vector2 GetWindowScaleDPI()
 {
     Vector2 scale = Vector2( 1.0f, 1.0f );
 
@@ -2534,7 +2540,7 @@ extern(C) Vector2 GetWindowScaleDPI() nothrow @nogc
 }
 
 /// Get the human-readable, UTF-8 encoded name of the primary monitor
-extern(C) const(char) *GetMonitorName(int monitor) nothrow @nogc
+const(char) *GetMonitorName(int monitor)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         int monitorCount;
@@ -2551,7 +2557,7 @@ extern(C) const(char) *GetMonitorName(int monitor) nothrow @nogc
 
 /// Get clipboard text content
 /// NOTE: returned string is allocated and freed by GLFW
-extern(C) const(char) *GetClipboardText() nothrow @nogc
+const(char) *GetClipboardText()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         return glfwGetClipboardString(CORE.Window.handle);
@@ -2563,7 +2569,7 @@ extern(C) const(char) *GetClipboardText() nothrow @nogc
 }
 
 /// Set clipboard text content
-extern(C) void SetClipboardText(const char *text) nothrow @nogc
+void SetClipboardText(const char *text)
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         glfwSetClipboardString(CORE.Window.handle, text);
@@ -2571,7 +2577,7 @@ extern(C) void SetClipboardText(const char *text) nothrow @nogc
 }
 
 /// Show mouse cursor
-extern(C) void ShowCursor() nothrow @nogc
+void ShowCursor()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         glfwSetInputMode(CORE.Window.handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -2581,7 +2587,7 @@ extern(C) void ShowCursor() nothrow @nogc
 }
 
 /// Hides mouse cursor
-extern(C) void HideCursor() nothrow @nogc
+void HideCursor()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         glfwSetInputMode(CORE.Window.handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
@@ -2591,13 +2597,13 @@ extern(C) void HideCursor() nothrow @nogc
 }
 
 /// Check if cursor is not visible
-extern(C) bool IsCursorHidden() nothrow @nogc
+bool IsCursorHidden()
 {
     return CORE.Input.Mouse.cursorHidden;
 }
 
 // Enables cursor (unlock cursor)
-extern(C) void EnableCursor() nothrow @nogc
+void EnableCursor()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         glfwSetInputMode(CORE.Window.handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -2611,7 +2617,7 @@ extern(C) void EnableCursor() nothrow @nogc
 }
 
 /// Disables cursor (lock cursor)
-extern(C) void DisableCursor() nothrow @nogc
+void DisableCursor()
 {
     version(all) { // #if defined(PLATFORM_DESKTOP)
         glfwSetInputMode(CORE.Window.handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -2624,20 +2630,20 @@ extern(C) void DisableCursor() nothrow @nogc
 }
 
 /// Check if cursor is on the current screen.
-extern(C) bool IsCursorOnScreen() nothrow @nogc
+bool IsCursorOnScreen()
 {
     return CORE.Input.Mouse.cursorOnScreen;
 }
 
 /// Set background color (framebuffer clear color)
-extern(C) void ClearBackground(Color color) nothrow @nogc
+void ClearBackground(Color color)
 {
     rlClearColor(color.r, color.g, color.b, color.a);   // Set clear color
     rlClearScreenBuffers();                             // Clear current framebuffers
 }
 
 /// Setup canvas (framebuffer) to start drawing
-extern(C) void BeginDrawing() nothrow @nogc
+void BeginDrawing()
 {
     // WARNING: Previously to BeginDrawing() other render textures drawing could happen,
     // consequently the measure for update vs draw is not accurate (only the total frame time is accurate)
@@ -2654,7 +2660,7 @@ extern(C) void BeginDrawing() nothrow @nogc
 }
 
 /// End canvas drawing and swap buffers (double buffering)
-extern(C) void EndDrawing() nothrow @nogc
+void EndDrawing()
 {
     rlDrawRenderBatchActive();      // Update and draw internal render batch
 
@@ -2763,7 +2769,7 @@ extern(C) void EndDrawing() nothrow @nogc
 }
 
 /// Initialize 2D mode with custom camera (2D)
-extern(C) void BeginMode2D(Camera2D camera) nothrow @nogc
+void BeginMode2D(Camera2D camera)
 {
     rlDrawRenderBatchActive();      // Update and draw internal render batch
 
@@ -2777,7 +2783,7 @@ extern(C) void BeginMode2D(Camera2D camera) nothrow @nogc
 }
 
 /// Ends 2D mode with custom camera
-extern(C) void EndMode2D() nothrow @nogc
+void EndMode2D()
 {
     rlDrawRenderBatchActive();      // Update and draw internal render batch
 
@@ -2786,7 +2792,7 @@ extern(C) void EndMode2D() nothrow @nogc
 }
 
 // Initializes 3D mode with custom camera (3D)
-extern(C) void BeginMode3D(Camera3D camera) nothrow @nogc
+void BeginMode3D(Camera3D camera)
 {
     rlDrawRenderBatchActive();      // Update and draw internal render batch
 
@@ -2825,7 +2831,7 @@ extern(C) void BeginMode3D(Camera3D camera) nothrow @nogc
 }
 
 /// Ends 3D mode and returns to default 2D orthographic mode
-extern(C) void EndMode3D() nothrow @nogc
+void EndMode3D()
 {
     rlDrawRenderBatchActive();      // Update and draw internal render batch
 
@@ -2841,7 +2847,7 @@ extern(C) void EndMode3D() nothrow @nogc
 }
 
 /// Initializes render texture for drawing
-extern(C) void BeginTextureMode(RenderTexture2D target) nothrow @nogc
+void BeginTextureMode(RenderTexture2D target)
 {
     rlDrawRenderBatchActive();      // Update and draw internal render batch
 
@@ -2869,7 +2875,7 @@ extern(C) void BeginTextureMode(RenderTexture2D target) nothrow @nogc
 }
 
 /// Ends drawing to render texture
-extern(C) void EndTextureMode() nothrow @nogc
+void EndTextureMode()
 {
     rlDrawRenderBatchActive();      // Update and draw internal render batch
 
@@ -2884,33 +2890,33 @@ extern(C) void EndTextureMode() nothrow @nogc
 }
 
 /// Begin custom shader mode
-extern(C) void BeginShaderMode(Shader shader) nothrow @nogc
+void BeginShaderMode(Shader shader)
 {
     rlSetShader(shader.id, shader.locs);
 }
 
 /// End custom shader mode (returns to default shader)
-extern(C) void EndShaderMode() nothrow @nogc
+void EndShaderMode()
 {
     rlSetShader(rlGetShaderIdDefault(), rlGetShaderLocsDefault());
 }
 
 /// Begin blending mode (alpha, additive, multiplied, subtract, custom)
 /// NOTE: Blend modes supported are enumerated in BlendMode enum
-extern(C) void BeginBlendMode(int mode) nothrow @nogc
+void BeginBlendMode(int mode)
 {
     rlSetBlendMode(mode);
 }
 
 /// End blending mode (reset to default: alpha blending)
-extern(C) void EndBlendMode() nothrow @nogc
+void EndBlendMode()
 {
     rlSetBlendMode(BlendMode.BLEND_ALPHA);
 }
 
 /// Begin scissor mode (define screen area for following drawing)
 /// NOTE: Scissor rec refers to bottom-left corner, we change it to upper-left
-extern(C) void BeginScissorMode(int x, int y, int width, int height) nothrow @nogc
+void BeginScissorMode(int x, int y, int width, int height)
 {
     rlDrawRenderBatchActive();      // Update and draw internal render batch
 
@@ -2929,14 +2935,14 @@ extern(C) void BeginScissorMode(int x, int y, int width, int height) nothrow @no
 }
 
 /// End scissor mode
-extern(C) void EndScissorMode() nothrow @nogc
+void EndScissorMode()
 {
     rlDrawRenderBatchActive();      // Update and draw internal render batch
     rlDisableScissorTest();
 }
 
 /// Begin VR drawing configuration
-extern(C) void BeginVrStereoMode(VrStereoConfig config) nothrow @nogc
+void BeginVrStereoMode(VrStereoConfig config)
 {
     rlEnableStereoRender();
 
@@ -2946,7 +2952,486 @@ extern(C) void BeginVrStereoMode(VrStereoConfig config) nothrow @nogc
 }
 
 /// End VR drawing process (and desktop mirror)
-extern(C) void EndVrStereoMode() nothrow @nogc
+void EndVrStereoMode()
 {
     rlDisableStereoRender();
+}
+
+/// Load VR stereo config for VR simulator device parameters
+VrStereoConfig LoadVrStereoConfig(VrDeviceInfo device)
+{
+    VrStereoConfig config;
+
+    if ((rlGetVersion() == rlGlVersion.OPENGL_33) || (rlGetVersion() == rlGlVersion.OPENGL_ES_20))
+    {
+        // Compute aspect ratio
+        float aspect = (device.hResolution*0.5f)/device.vResolution;
+
+        // Compute lens parameters
+        float lensShift = (device.hScreenSize*0.25f - device.lensSeparationDistance*0.5f)/device.hScreenSize;
+        config.leftLensCenter[0] = 0.25f + lensShift;
+        config.leftLensCenter[1] = 0.5f;
+        config.rightLensCenter[0] = 0.75f - lensShift;
+        config.rightLensCenter[1] = 0.5f;
+        config.leftScreenCenter[0] = 0.25f;
+        config.leftScreenCenter[1] = 0.5f;
+        config.rightScreenCenter[0] = 0.75f;
+        config.rightScreenCenter[1] = 0.5f;
+
+        // Compute distortion scale parameters
+        // NOTE: To get lens max radius, lensShift must be normalized to [-1..1]
+        float lensRadius = fabsf(-1.0f - 4.0f*lensShift);
+        float lensRadiusSq = lensRadius*lensRadius;
+        float distortionScale = device.lensDistortionValues[0] +
+                                device.lensDistortionValues[1]*lensRadiusSq +
+                                device.lensDistortionValues[2]*lensRadiusSq*lensRadiusSq +
+                                device.lensDistortionValues[3]*lensRadiusSq*lensRadiusSq*lensRadiusSq;
+
+        float normScreenWidth = 0.5f;
+        float normScreenHeight = 1.0f;
+        config.scaleIn[0] = 2.0f/normScreenWidth;
+        config.scaleIn[1] = 2.0f/normScreenHeight/aspect;
+        config.scale[0] = normScreenWidth*0.5f/distortionScale;
+        config.scale[1] = normScreenHeight*0.5f*aspect/distortionScale;
+
+        // Fovy is normally computed with: 2*atan2f(device.vScreenSize, 2*device.eyeToScreenDistance)
+        // ...but with lens distortion it is increased (see Oculus SDK Documentation)
+        //float fovy = 2.0f*atan2f(device.vScreenSize*0.5f*distortionScale, device.eyeToScreenDistance);     // Really need distortionScale?
+        float fovy = 2.0f*atan2f(device.vScreenSize*0.5f, device.eyeToScreenDistance);
+
+        // Compute camera projection matrices
+        float projOffset = 4.0f*lensShift;      // Scaled to projection space coordinates [-1..1]
+        Matrix proj = MatrixPerspective(fovy, aspect, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+
+        config.projection[0] = MatrixMultiply(proj, MatrixTranslate(projOffset, 0.0f, 0.0f));
+        config.projection[1] = MatrixMultiply(proj, MatrixTranslate(-projOffset, 0.0f, 0.0f));
+
+        // Compute camera transformation matrices
+        // NOTE: Camera movement might seem more natural if we model the head.
+        // Our axis of rotation is the base of our head, so we might want to add
+        // some y (base of head to eye level) and -z (center of head to eye protrusion) to the camera positions.
+        config.viewOffset[0] = MatrixTranslate(-device.interpupillaryDistance*0.5f, 0.075f, 0.045f);
+        config.viewOffset[1] = MatrixTranslate(device.interpupillaryDistance*0.5f, 0.075f, 0.045f);
+
+        // Compute eyes Viewports
+        /*
+        config.eyeViewportRight[0] = 0;
+        config.eyeViewportRight[1] = 0;
+        config.eyeViewportRight[2] = device.hResolution/2;
+        config.eyeViewportRight[3] = device.vResolution;
+
+        config.eyeViewportLeft[0] = device.hResolution/2;
+        config.eyeViewportLeft[1] = 0;
+        config.eyeViewportLeft[2] = device.hResolution/2;
+        config.eyeViewportLeft[3] = device.vResolution;
+        */
+    }
+    else TraceLog(TraceLogLevel.LOG_WARNING, "RLGL: VR Simulator not supported on OpenGL 1.1");
+
+    return config;
+}
+
+/// Unload VR stereo config properties
+void UnloadVrStereoConfig(VrStereoConfig config)
+{
+    //...
+}
+
+/// Load shader from files and bind default locations
+/// NOTE: If shader string is NULL, using default vertex/fragment shaders
+Shader LoadShader(const char *vsFileName, const char *fsFileName)
+{
+    Shader shader;
+
+    char *vShaderStr = null;
+    char *fShaderStr = null;
+
+    if (vsFileName != null) vShaderStr = LoadFileText(vsFileName);
+    if (fsFileName != null) fShaderStr = LoadFileText(fsFileName);
+
+    shader = LoadShaderFromMemory(vShaderStr, fShaderStr);
+
+    UnloadFileText(vShaderStr);
+    UnloadFileText(fShaderStr);
+
+    return shader;
+}
+
+/// Load shader from code strings and bind default locations
+Shader LoadShaderFromMemory(const char *vsCode, const char *fsCode)
+{
+    Shader shader;
+    shader.locs = cast(int *)RL_CALLOC(RL_MAX_SHADER_LOCATIONS, int.sizeof);
+
+    // NOTE: All locations must be reseted to -1 (no location)
+    for (int i = 0; i < RL_MAX_SHADER_LOCATIONS; i++) shader.locs[i] = -1;
+
+    shader.id = rlLoadShaderCode(vsCode, fsCode);
+
+    // After shader loading, we TRY to set default location names
+    if (shader.id > 0)
+    {
+        // Default shader attribute locations have been binded before linking:
+        //          vertex position location    = 0
+        //          vertex texcoord location    = 1
+        //          vertex normal location      = 2
+        //          vertex color location       = 3
+        //          vertex tangent location     = 4
+        //          vertex texcoord2 location   = 5
+
+        // NOTE: If any location is not found, loc point becomes -1
+
+        // Get handles to GLSL input attibute locations
+        shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_POSITION] = rlGetLocationAttrib(shader.id, RL_DEFAULT_SHADER_ATTRIB_NAME_POSITION);
+        shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD01] = rlGetLocationAttrib(shader.id, RL_DEFAULT_SHADER_ATTRIB_NAME_TEXCOORD);
+        shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD02] = rlGetLocationAttrib(shader.id, RL_DEFAULT_SHADER_ATTRIB_NAME_TEXCOORD2);
+        shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_NORMAL] = rlGetLocationAttrib(shader.id, RL_DEFAULT_SHADER_ATTRIB_NAME_NORMAL);
+        shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TANGENT] = rlGetLocationAttrib(shader.id, RL_DEFAULT_SHADER_ATTRIB_NAME_TANGENT);
+        shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR] = rlGetLocationAttrib(shader.id, RL_DEFAULT_SHADER_ATTRIB_NAME_COLOR);
+
+        // Get handles to GLSL uniform locations (vertex shader)
+        shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_MVP] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MVP);
+        shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_VIEW] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_VIEW);
+        shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_PROJECTION] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_PROJECTION);
+        shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_MODEL] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_MODEL);
+        shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_NORMAL] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_NORMAL);
+
+        // Get handles to GLSL uniform locations (fragment shader)
+        shader.locs[ShaderLocationIndex.SHADER_LOC_COLOR_DIFFUSE] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_UNIFORM_NAME_COLOR);
+        shader.locs[ShaderLocationIndex.SHADER_LOC_MAP_DIFFUSE] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE0);  // SHADER_LOC_MAP_ALBEDO
+        shader.locs[ShaderLocationIndex.SHADER_LOC_MAP_SPECULAR] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE1); // SHADER_LOC_MAP_METALNESS
+        shader.locs[ShaderLocationIndex.SHADER_LOC_MAP_NORMAL] = rlGetLocationUniform(shader.id, RL_DEFAULT_SHADER_SAMPLER2D_NAME_TEXTURE2);
+    }
+
+    return shader;
+}
+
+/// Unload shader from GPU memory (VRAM)
+void UnloadShader(Shader shader)
+{
+    if (shader.id != rlGetShaderIdDefault())
+    {
+        rlUnloadShaderProgram(shader.id);
+        RL_FREE(shader.locs);
+    }
+}
+
+/// Get shader uniform location
+int GetShaderLocation(Shader shader, const char *uniformName)
+{
+    return rlGetLocationUniform(shader.id, uniformName);
+}
+
+/// Get shader attribute location
+int GetShaderLocationAttrib(Shader shader, const char *attribName)
+{
+    return rlGetLocationAttrib(shader.id, attribName);
+}
+
+/// Set shader uniform value
+void SetShaderValue(Shader shader, int locIndex, const void *value, int uniformType)
+{
+    SetShaderValueV(shader, locIndex, value, uniformType, 1);
+}
+
+/// Set shader uniform value vector
+void SetShaderValueV(Shader shader, int locIndex, const void *value, int uniformType, int count)
+{
+    rlEnableShader(shader.id);
+    rlSetUniform(locIndex, value, uniformType, count);
+    //rlDisableShader();      // Avoid reseting current shader program, in case other uniforms are set
+}
+
+/// Set shader uniform value (matrix 4x4)
+void SetShaderValueMatrix(Shader shader, int locIndex, Matrix mat)
+{
+    rlEnableShader(shader.id);
+    rlSetUniformMatrix(locIndex, mat);
+    //rlDisableShader();
+}
+
+/// Set shader uniform value for texture
+void SetShaderValueTexture(Shader shader, int locIndex, Texture2D texture)
+{
+    rlEnableShader(shader.id);
+    rlSetUniformSampler(locIndex, texture.id);
+    //rlDisableShader();
+}
+
+/// Get a ray trace from mouse position
+Ray GetMouseRay(Vector2 mouse, Camera camera)
+{
+    Ray ray;
+
+    // Calculate normalized device coordinates
+    // NOTE: y value is negative
+    float x = (2.0f*mouse.x)/GetScreenWidth() - 1.0f;
+    float y = 1.0f - (2.0f*mouse.y)/GetScreenHeight();
+    float z = 1.0f;
+
+    // Store values in a vector
+    Vector3 deviceCoords = Vector3( x, y, z );
+
+    // Calculate view matrix from camera look at
+    Matrix matView = MatrixLookAt(camera.position, camera.target, camera.up);
+
+    Matrix matProj = MatrixIdentity();
+
+    if (camera.projection == CameraProjection.CAMERA_PERSPECTIVE)
+    {
+        // Calculate projection matrix from perspective
+        matProj = MatrixPerspective(camera.fovy*DEG2RAD, (GetScreenWidth()/cast(double)GetScreenHeight()), RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+    }
+    else if (camera.projection == CameraProjection.CAMERA_ORTHOGRAPHIC)
+    {
+        float aspect = CORE.Window.screen.width/cast(float)CORE.Window.screen.height;
+        double top = camera.fovy/2.0;
+        double right = top*aspect;
+
+        // Calculate projection matrix from orthographic
+        matProj = MatrixOrtho(-right, right, -top, top, 0.01, 1000.0);
+    }
+
+    // Unproject far/near points
+    Vector3 nearPoint = Vector3Unproject(Vector3( deviceCoords.x, deviceCoords.y, 0.0f ), matProj, matView);
+    Vector3 farPoint = Vector3Unproject(Vector3( deviceCoords.x, deviceCoords.y, 1.0f ), matProj, matView);
+
+    // Unproject the mouse cursor in the near plane.
+    // We need this as the source position because orthographic projects, compared to perspect doesn't have a
+    // convergence point, meaning that the "eye" of the camera is more like a plane than a point.
+    Vector3 cameraPlanePointerPos = Vector3Unproject(Vector3( deviceCoords.x, deviceCoords.y, -1.0f ), matProj, matView);
+
+    // Calculate normalized direction vector
+    Vector3 direction = Vector3Normalize(Vector3Subtract(farPoint, nearPoint));
+
+    if (camera.projection == CameraProjection.CAMERA_PERSPECTIVE) ray.position = camera.position;
+    else if (camera.projection == CameraProjection.CAMERA_ORTHOGRAPHIC) ray.position = cameraPlanePointerPos;
+
+    // Apply calculated vectors to ray
+    ray.direction = direction;
+
+    return ray;
+}
+
+/// Get transform matrix for camera
+Matrix GetCameraMatrix(Camera camera)
+{
+    return MatrixLookAt(camera.position, camera.target, camera.up);
+}
+
+/// Get camera 2d transform matrix
+Matrix GetCameraMatrix2D(Camera2D camera)
+{
+    Matrix matTransform;
+    // The camera in world-space is set by
+    //   1. Move it to target
+    //   2. Rotate by -rotation and scale by (1/zoom)
+    //      When setting higher scale, it's more intuitive for the world to become bigger (= camera become smaller),
+    //      not for the camera getting bigger, hence the invert. Same deal with rotation.
+    //   3. Move it by (-offset);
+    //      Offset defines target transform relative to screen, but since we're effectively "moving" screen (camera)
+    //      we need to do it into opposite direction (inverse transform)
+
+    // Having camera transform in world-space, inverse of it gives the modelview transform.
+    // Since (A*B*C)' = C'*B'*A', the modelview is
+    //   1. Move to offset
+    //   2. Rotate and Scale
+    //   3. Move by -target
+    Matrix matOrigin = MatrixTranslate(-camera.target.x, -camera.target.y, 0.0f);
+    Matrix matRotation = MatrixRotate(Vector3( 0.0f, 0.0f, 1.0f ), camera.rotation*DEG2RAD);
+    Matrix matScale = MatrixScale(camera.zoom, camera.zoom, 1.0f);
+    Matrix matTranslation = MatrixTranslate(camera.offset.x, camera.offset.y, 0.0f);
+
+    matTransform = MatrixMultiply(MatrixMultiply(matOrigin, MatrixMultiply(matScale, matRotation)), matTranslation);
+
+    return matTransform;
+}
+
+/// Get the screen space position from a 3d world space position
+Vector2 GetWorldToScreen(Vector3 position, Camera camera)
+{
+    Vector2 screenPosition = GetWorldToScreenEx(position, camera, GetScreenWidth(), GetScreenHeight());
+
+    return screenPosition;
+}
+
+/// Get size position for a 3d world space position (useful for texture drawing)
+Vector2 GetWorldToScreenEx(Vector3 position, Camera camera, int width, int height)
+{
+    // Calculate projection matrix (from perspective instead of frustum
+    Matrix matProj = MatrixIdentity();
+
+    if (camera.projection == CameraProjection.CAMERA_PERSPECTIVE)
+    {
+        // Calculate projection matrix from perspective
+        matProj = MatrixPerspective(camera.fovy*DEG2RAD, (width/cast(double)height), RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+    }
+    else if (camera.projection == CameraProjection.CAMERA_ORTHOGRAPHIC)
+    {
+        float aspect = CORE.Window.screen.width/cast(float)CORE.Window.screen.height;
+        double top = camera.fovy/2.0;
+        double right = top*aspect;
+
+        // Calculate projection matrix from orthographic
+        matProj = MatrixOrtho(-right, right, -top, top, RL_CULL_DISTANCE_NEAR, RL_CULL_DISTANCE_FAR);
+    }
+
+    // Calculate view matrix from camera look at (and transpose it)
+    Matrix matView = MatrixLookAt(camera.position, camera.target, camera.up);
+
+    // TODO: Why not use Vector3Transform(Vector3 v, Matrix mat)?
+
+    // Convert world position vector to quaternion
+    Quaternion worldPos = Quaternion( position.x, position.y, position.z, 1.0f );
+
+    // Transform world position to view
+    worldPos = QuaternionTransform(worldPos, matView);
+
+    // Transform result to projection (clip space position)
+    worldPos = QuaternionTransform(worldPos, matProj);
+
+    // Calculate normalized device coordinates (inverted y)
+    Vector3 ndcPos = Vector3( worldPos.x/worldPos.w, -worldPos.y/worldPos.w, worldPos.z/worldPos.w );
+
+    // Calculate 2d screen position vector
+    Vector2 screenPosition = Vector2( (ndcPos.x + 1.0f)/2.0f*width, (ndcPos.y + 1.0f)/2.0f*height );
+
+    return screenPosition;
+}
+
+/// Get the screen space position for a 2d camera world space position
+Vector2 GetWorldToScreen2D(Vector2 position, Camera2D camera)
+{
+    Matrix matCamera = GetCameraMatrix2D(camera);
+    Vector3 transform = Vector3Transform(Vector3( position.x, position.y, 0 ), matCamera);
+
+    return Vector2( transform.x, transform.y );
+}
+
+/// Get the world space position for a 2d camera screen space position
+Vector2 GetScreenToWorld2D(Vector2 position, Camera2D camera)
+{
+    Matrix invMatCamera = MatrixInvert(GetCameraMatrix2D(camera));
+    Vector3 transform = Vector3Transform(Vector3( position.x, position.y, 0 ), invMatCamera);
+
+    return Vector2( transform.x, transform.y );
+}
+
+/// Set target FPS (maximum)
+void SetTargetFPS(int fps)
+{
+    if (fps < 1) CORE.Time.target = 0.0;
+    else CORE.Time.target = 1.0/fps;
+
+    TraceLog(TraceLogLevel.LOG_INFO, "TIMER: Target time per frame: %02.03f milliseconds", cast(float)CORE.Time.target*1000);
+}
+
+/// Get current FPS
+/// NOTE: We calculate an average framerate
+int GetFPS()
+{
+    int fps = 0;
+
+    version(all) { // #if !defined(SUPPORT_CUSTOM_FRAME_CONTROL)
+        enum FPS_CAPTURE_FRAMES_COUNT = 30;     // 30 captures
+        enum FPS_AVERAGE_TIME_SECONDS = 0.5f;    // 500 millisecondes
+        enum FPS_STEP = (FPS_AVERAGE_TIME_SECONDS/FPS_CAPTURE_FRAMES_COUNT);
+
+        static int index = 0;
+        static float[FPS_CAPTURE_FRAMES_COUNT] history = 0;
+        static float average = 0, last = 0;
+        float fpsFrame = GetFrameTime();
+
+        if (fpsFrame == 0) return 0;
+
+        if ((GetTime() - last) > FPS_STEP)
+        {
+            last = GetTime();
+            index = (index + 1)%FPS_CAPTURE_FRAMES_COUNT;
+            average -= history[index];
+            history[index] = fpsFrame/FPS_CAPTURE_FRAMES_COUNT;
+            average += history[index];
+        }
+
+        fps = cast(int)roundf(1.0f/average);
+    }
+
+    return fps;
+}
+
+/// Get time in seconds for last frame drawn (delta time)
+float GetFrameTime()
+{
+    return CORE.Time.frame;
+}
+
+/// Get elapsed time measure in seconds since InitTimer()
+/// NOTE: On PLATFORM_DESKTOP InitTimer() is called on InitWindow()
+/// NOTE: On PLATFORM_DESKTOP, timer is initialized on glfwInit()
+double GetTime()
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+        return glfwGetTime();   // Elapsed time since glfwInit()
+    }
+
+    version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        cpp_ulonglong time = ts.tv_sec*1000000000UL + ts.tv_nsec;
+
+        return (time - CORE.Time.base)*1e-9;  // Elapsed time since InitTimer()
+    }
+}
+
+/// Setup window configuration flags (view FLAGS)
+/// NOTE: This function is expected to be called before window creation,
+/// because it setups some flags for the window creation process.
+/// To configure window states after creation, just use SetWindowState()
+void SetConfigFlags(uint flags)
+{
+    // Selected flags are set but not evaluated at this point,
+    // flag evaluation happens at InitWindow() or SetWindowState()
+    CORE.Window.flags |= flags;
+}
+
+// NOTE TRACELOG() function is located in [utils.h]
+
+/// Takes a screenshot of current screen (saved a .png)
+void TakeScreenshot(const char *fileName)
+{
+    ubyte *imgData = rlReadScreenPixels(CORE.Window.render.width, CORE.Window.render.height);
+    Image image = Image( imgData, CORE.Window.render.width, CORE.Window.render.height, 1, PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 );
+
+    char[512] path = 0;
+    strcpy(path.ptr, TextFormat("%s/%s", CORE.Storage.basePath, fileName));
+
+    ExportImage(image, path.ptr);
+    RL_FREE(imgData);
+
+    version(none) { // #if defined(PLATFORM_WEB)
+        // Download file from MEMFS (emscripten memory filesystem)
+        // saveFileFromMEMFSToDisk() function is defined in raylib/src/shell.html
+        emscripten_run_script(TextFormat("saveFileFromMEMFSToDisk('%s','%s')", GetFileName(path), GetFileName(path)));
+    }
+
+    TraceLog(TraceLogLevel.LOG_INFO, "SYSTEM: [%s] Screenshot taken successfully", path.ptr);
+}
+
+/// Get a random value between min and max (both included)
+int GetRandomValue(int min, int max)
+{
+    if (min > max)
+    {
+        int tmp = max;
+        max = min;
+        min = tmp;
+    }
+
+    return (rand()%(abs(max - min) + 1) + min);
+}
+
+/// Set the seed for the random number generator
+void SetRandomSeed(uint seed)
+{
+    srand(seed);
 }
