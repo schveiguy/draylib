@@ -486,8 +486,12 @@ typedef struct CoreData {
 extern CoreData *_get_CORE(); // use from D side
 #define CORE (*_get_CORE())
 
-static char **dirFilesPath = NULL;          // Store directory files paths as strings
-static int dirFileCount = 0;                // Count directory files strings
+//static char **dirFilesPath = NULL;          // Store directory files paths as strings
+extern char ***_get_dirFilesPath();
+#define get_dirFilesPath (*_get_dirFilesPath())
+//static int dirFileCount = 0;                // Count directory files strings
+extern int *_get_dirFileCount();
+#define dirFileCount (*_get_dirFileCount())
 
 #if defined(SUPPORT_SCREEN_CAPTURE)
 //static int screenshotCounter = 0;           // Screenshots counter
@@ -2709,7 +2713,6 @@ void SetRandomSeed(unsigned int seed)
 {
     srand(seed);
 }
-#endif
 
 // Check if the file exists
 bool FileExists(const char *fileName)
@@ -3009,6 +3012,8 @@ long GetFileModTime(const char *fileName)
 
     return 0;
 }
+
+#endif
 
 // Compress data (DEFLATE algorythm)
 unsigned char *CompressData(unsigned char *data, int dataLength, int *compDataLength)
