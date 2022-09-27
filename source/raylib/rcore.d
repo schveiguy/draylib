@@ -11,6 +11,17 @@ import core.stdc.stdlib;
 import core.stdc.math;
 import core.stdc.string;
 import core.sys.posix.sys.time;
+import core.stdc.config;
+version(Posix)
+{
+    import core.sys.posix.sys.stat;
+}
+else version(Windows)
+{
+    import core.sys.windows.stat;
+    alias stat_t = struct_stat;
+}
+else static assert(0, "Unknown Platform");
 
 // define allocation functions
 alias RL_MALLOC = malloc;
@@ -28,18 +39,36 @@ version(Windows)
     extern(Windows) uint timeBeginPeriod(uint uPeriod);
     extern(Windows) uint timeEndPeriod(uint uPeriod);
     extern(Windows) void Sleep(cpp_ulong msTimeout);
+
+    // TODO find these definitions
+    // #include <direct.h>
+    alias GETCWD = _getcwd;
+    alias CHDIR = _chdir;
+
+    // TODO: rewrite this lib
+    import raylib.external.dirent;
+}
+else version(Posix)
+{
+    import core.sys.posix.unistd;
+    import core.sys.posix.dirent;
+    alias GETCWD = getcwd;
+    alias CHDIR = chdir;
 }
 
 // port of rcore.c
 //
-enum MAX_KEYBOARD_KEYS = 512;        // Maximum number of keyboard keys supported
-enum MAX_MOUSE_BUTTONS = 8;          // Maximum number of mouse buttons supported
-enum MAX_GAMEPADS = 4;               // Maximum number of gamepads supported
-enum MAX_GAMEPAD_AXIS = 8;           // Maximum number of axis supported (per gamepad)
-enum MAX_GAMEPAD_BUTTONS = 32;       // Maximum number of buttons supported (per gamepad)
-enum MAX_TOUCH_POINTS = 8;           // Maximum number of touch points supported
-enum MAX_KEY_PRESSED_QUEUE = 16;     // Maximum number of keys in the key input queue
-enum MAX_CHAR_PRESSED_QUEUE = 16;    // Maximum number of characters in the char input queue
+private {
+    enum MAX_KEYBOARD_KEYS = 512;        // Maximum number of keyboard keys supported
+    enum MAX_MOUSE_BUTTONS = 8;          // Maximum number of mouse buttons supported
+    enum MAX_GAMEPADS = 4;               // Maximum number of gamepads supported
+    enum MAX_GAMEPAD_AXIS = 8;           // Maximum number of axis supported (per gamepad)
+    enum MAX_GAMEPAD_BUTTONS = 32;       // Maximum number of buttons supported (per gamepad)
+    enum MAX_TOUCH_POINTS = 8;           // Maximum number of touch points supported
+    enum MAX_KEY_PRESSED_QUEUE = 16;     // Maximum number of keys in the key input queue
+    enum MAX_CHAR_PRESSED_QUEUE = 16;    // Maximum number of characters in the char input queue
+    enum MAX_DIRECTORY_FILES = 512;
+}
 
 version(all) { // #if defined(SUPPORT_DEFAULT_FONT)
     void LoadFontDefault();          // [Module: text] Loads default font on InitWindow()
@@ -227,6 +256,11 @@ version(all) { // #if defined(SUPPORT_SCREEN_CAPTURE)
     private __gshared int screenshotCounter = 0;
     mixin ExportForC!"screenshotCounter";
 }
+
+private __gshared char **dirFilesPath = null;
+mixin ExportForC!"dirFilesPath";
+private __gshared int dirFileCount = 0;
+mixin ExportForC!"dirFileCount";
 
 /// Initialize window and OpenGL context
 /// NOTE: data parameter could be used to pass any kind of required data to the initialization
@@ -3434,4 +3468,303 @@ int GetRandomValue(int min, int max)
 void SetRandomSeed(uint seed)
 {
     srand(seed);
+}
+
+/// Check if the file exists
+bool FileExists(const char *fileName)
+{
+    bool result = false;
+
+    version(Windows) { //#if defined(_WIN32)
+        if (_access(fileName, 0) != -1) result = true;
+    } else {
+        if (access(fileName, F_OK) != -1) result = true;
+    }
+
+    return result;
+}
+
+/// Check file extension
+/// NOTE: Extensions checking is not case-sensitive
+bool IsFileExtension(const char *fileName, const char *ext)
+{
+    bool result = false;
+    const char *fileExt = GetFileExtension(fileName);
+
+    if (fileExt != null)
+    {
+        version(all) { // #if defined(SUPPORT_TEXT_MANIPULATION)
+            int extCount = 0;
+            const char **checkExts = TextSplit(ext, ';', &extCount);
+
+            char[16] fileExtLower = 0;
+            strcpy(fileExtLower.ptr, TextToLower(fileExt));
+
+            for (int i = 0; i < extCount; i++)
+            {
+                if (TextIsEqual(fileExtLower.ptr, TextToLower(checkExts[i])))
+                {
+                    result = true;
+                    break;
+                }
+            }
+        } else {
+            if (strcmp(fileExt, ext) == 0) result = true;
+        }
+    }
+
+    return result;
+}
+
+/// Check if a directory path exists
+bool DirectoryExists(const char *dirPath)
+{
+    bool result = false;
+    DIR *dir = opendir(dirPath);
+
+    if (dir != null)
+    {
+        result = true;
+        closedir(dir);
+    }
+
+    return result;
+}
+
+/// Get pointer to extension for a filename string (includes the dot: .png)
+const(char) *GetFileExtension(const char *fileName)
+{
+    const char *dot = strrchr(fileName, '.');
+
+    if (!dot || dot == fileName) return null;
+
+    return dot;
+}
+
+/// String pointer reverse break: returns right-most occurrence of charset in s
+private const(char) *strprbrk(const(char)* s, const char *charset)
+{
+    const(char)*latestMatch = null;
+    for (; (s = strpbrk(s, charset)) != null; latestMatch = s++) { }
+    return latestMatch;
+}
+
+/// Get pointer to filename for a path string
+const(char) *GetFileName(const(char)* filePath)
+{
+    const(char)* fileName = null;
+    if (filePath != null) fileName = strprbrk(filePath, "\\/");
+
+    if (!fileName) return filePath;
+
+    return fileName + 1;
+}
+
+/// Get filename string without extension (uses static string)
+const(char) *GetFileNameWithoutExt(const char *filePath)
+{
+    enum MAX_FILENAMEWITHOUTEXT_LENGTH = 128;
+
+    static char[MAX_FILENAMEWITHOUTEXT_LENGTH] fileName = 0;
+    memset(fileName.ptr, 0, MAX_FILENAMEWITHOUTEXT_LENGTH);
+
+    if (filePath != null) strcpy(fileName.ptr, GetFileName(filePath));   // Get filename with extension
+
+    int size = cast(int)strlen(fileName.ptr);   // Get size in bytes
+
+    for (int i = 0; (i < size) && (i < MAX_FILENAMEWITHOUTEXT_LENGTH); i++)
+    {
+        if (fileName[i] == '.')
+        {
+            // NOTE: We break on first '.' found
+            fileName[i] = '\0';
+            break;
+        }
+    }
+
+    return fileName.ptr;
+}
+
+/// Get directory for a given filePath
+const(char)*GetDirectoryPath(const char *filePath)
+{
+/*
+    // NOTE: Directory separator is different in Windows and other platforms,
+    // fortunately, Windows also support the '/' separator, that's the one should be used
+    #if defined(_WIN32)
+        char separator = '\\';
+    #else
+        char separator = '/';
+    #endif
+*/
+    const(char) *lastSlash = null;
+    static char[MAX_FILEPATH_LENGTH] dirPath = 0;
+    memset(dirPath.ptr, 0, MAX_FILEPATH_LENGTH);
+
+    // In case provided path does not contain a root drive letter (C:\, D:\) nor leading path separator (\, /),
+    // we add the current directory path to dirPath
+    if (filePath[1] != ':' && filePath[0] != '\\' && filePath[0] != '/')
+    {
+        // For security, we set starting path to current directory,
+        // obtained path will be concated to this
+        dirPath[0] = '.';
+        dirPath[1] = '/';
+    }
+
+    lastSlash = strprbrk(filePath, "\\/");
+    if (lastSlash)
+    {
+        if (lastSlash == filePath)
+        {
+            // The last and only slash is the leading one: path is in a root directory
+            dirPath[0] = filePath[0];
+            dirPath[1] = '\0';
+        }
+        else
+        {
+            // NOTE: Be careful, strncpy() is not safe, it does not care about '\0'
+            memcpy(dirPath.ptr + (filePath[1] != ':' && filePath[0] != '\\' && filePath[0] != '/' ? 2 : 0), filePath, strlen(filePath) - (strlen(lastSlash) - 1));
+            dirPath[strlen(filePath) - strlen(lastSlash) + (filePath[1] != ':' && filePath[0] != '\\' && filePath[0] != '/' ? 2 : 0)] = '\0';  // Add '\0' manually
+        }
+    }
+
+    return dirPath.ptr;
+}
+
+/// Get previous directory path for a given path
+const(char) *GetPrevDirectoryPath(const char *dirPath)
+{
+    static char[MAX_FILEPATH_LENGTH] prevDirPath = 0;
+    memset(prevDirPath.ptr, 0, MAX_FILEPATH_LENGTH);
+    int pathLen = cast(int)strlen(dirPath);
+
+    if (pathLen <= 3) strcpy(prevDirPath.ptr, dirPath);
+
+    for (int i = (pathLen - 1); (i >= 0) && (pathLen > 3); i--)
+    {
+        if ((dirPath[i] == '\\') || (dirPath[i] == '/'))
+        {
+            // Check for root: "C:\" or "/"
+            if (((i == 2) && (dirPath[1] ==':')) || (i == 0)) i++;
+
+            strncpy(prevDirPath.ptr, dirPath, i);
+            break;
+        }
+    }
+
+    return prevDirPath.ptr;
+}
+
+//// Get current working directory
+const(char) *GetWorkingDirectory()
+{
+    static char[MAX_FILEPATH_LENGTH] currentDir = 0;
+    memset(currentDir.ptr, 0, MAX_FILEPATH_LENGTH);
+
+    char *path = GETCWD(currentDir.ptr, MAX_FILEPATH_LENGTH - 1);
+
+    return path;
+}
+
+
+/// Get filenames in a directory path (max 512 files)
+/// NOTE: Files count is returned by parameters pointer
+char **GetDirectoryFiles(const char *dirPath, int *fileCount)
+{
+
+    ClearDirectoryFiles();
+
+    // Memory allocation for MAX_DIRECTORY_FILES
+    dirFilesPath = cast(char **)malloc(MAX_DIRECTORY_FILES * (char *).sizeof);
+    for (int i = 0; i < MAX_DIRECTORY_FILES; i++) dirFilesPath[i] = cast(char *)malloc(MAX_FILEPATH_LENGTH * char.sizeof);
+
+    int counter = 0;
+    dirent *entity;
+    DIR *dir = opendir(dirPath);
+
+    if (dir != null)  // It's a directory
+    {
+        // TODO: Reading could be done in two passes,
+        // first one to count files and second one to read names
+        // That way we can allocate required memory, instead of a limited pool
+
+        while ((entity = readdir(dir)) != null)
+        {
+            strcpy(dirFilesPath[counter], entity.d_name.ptr);
+            counter++;
+        }
+
+        closedir(dir);
+    }
+    else TraceLog(TraceLogLevel.LOG_WARNING, "FILEIO: Failed to open requested directory");  // Maybe it's a file...
+
+    dirFileCount = counter;
+    *fileCount = dirFileCount;
+
+    return dirFilesPath;
+}
+
+/// Clear directory files paths buffers
+void ClearDirectoryFiles()
+{
+    if (dirFileCount > 0)
+    {
+        for (int i = 0; i < MAX_DIRECTORY_FILES; i++) free(dirFilesPath[i]);
+
+        free(dirFilesPath);
+    }
+
+    dirFileCount = 0;
+}
+
+/// Change working directory, returns true on success
+bool ChangeDirectory(const char *dir)
+{
+    int result = CHDIR(dir);
+
+    if (result != 0) TraceLog(TraceLogLevel.LOG_WARNING, "SYSTEM: Failed to change to directory: %s", dir);
+
+    return (result == 0);
+}
+
+/// Check if a file has been dropped into window
+bool IsFileDropped()
+{
+    if (CORE.Window.dropFileCount > 0) return true;
+    else return false;
+}
+
+/// Get dropped files names
+char **GetDroppedFiles(int *count)
+{
+    *count = CORE.Window.dropFileCount;
+    return CORE.Window.dropFilesPath;
+}
+
+// Clear dropped files paths buffer
+void ClearDroppedFiles()
+{
+    if (CORE.Window.dropFileCount > 0)
+    {
+        for (int i = 0; i < CORE.Window.dropFileCount; i++) free(CORE.Window.dropFilesPath[i]);
+
+        free(CORE.Window.dropFilesPath);
+
+        CORE.Window.dropFileCount = 0;
+    }
+}
+
+// Get file modification time (last write time)
+c_long GetFileModTime(const char *fileName)
+{
+    stat_t result;
+
+    if (stat(fileName, &result) == 0)
+    {
+        time_t mod = result.st_mtime;
+
+        return cast(c_long)mod;
+    }
+
+    return 0;
 }
