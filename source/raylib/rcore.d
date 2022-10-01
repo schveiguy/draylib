@@ -6,12 +6,17 @@ import raylib.raymath;
 import raylib.rgestures;
 import raylib.rlgl;
 import raylib.external.msf_gif;
+import raylib.external.sinfl;
+import raylib.external.sdefl;
 
 import core.stdc.stdlib;
 import core.stdc.math;
 import core.stdc.string;
 import core.sys.posix.sys.time;
 import core.stdc.config;
+import core.stdc.stdio;
+
+// this is the entire public interface of sinfl, no need for a module.
 version(Posix)
 {
     import core.sys.posix.sys.stat;
@@ -3072,7 +3077,7 @@ void UnloadVrStereoConfig(VrStereoConfig config)
 }
 
 /// Load shader from files and bind default locations
-/// NOTE: If shader string is NULL, using default vertex/fragment shaders
+/// NOTE: If shader string is null, using default vertex/fragment shaders
 Shader LoadShader(const char *vsFileName, const char *fsFileName)
 {
     Shader shader;
@@ -3428,8 +3433,6 @@ void SetConfigFlags(uint flags)
     CORE.Window.flags |= flags;
 }
 
-// NOTE TRACELOG() function is located in [utils.h]
-
 /// Takes a screenshot of current screen (saved a .png)
 void TakeScreenshot(const char *fileName)
 {
@@ -3741,7 +3744,7 @@ char **GetDroppedFiles(int *count)
     return CORE.Window.dropFilesPath;
 }
 
-// Clear dropped files paths buffer
+/// Clear dropped files paths buffer
 void ClearDroppedFiles()
 {
     if (CORE.Window.dropFileCount > 0)
@@ -3754,7 +3757,7 @@ void ClearDroppedFiles()
     }
 }
 
-// Get file modification time (last write time)
+/// Get file modification time (last write time)
 c_long GetFileModTime(const char *fileName)
 {
     stat_t result;
@@ -3767,4 +3770,699 @@ c_long GetFileModTime(const char *fileName)
     }
 
     return 0;
+}
+
+/// Compress data (DEFLATE algorythm)
+ubyte *CompressData(ubyte *data, int dataLength, int *compDataLength)
+{
+    enum COMPRESSION_QUALITY_DEFLATE = 8;
+
+    ubyte *compData = null;
+
+    version(all) { // #if defined(SUPPORT_COMPRESSION_API)
+                   // Compress data and generate a valid DEFLATE stream
+        sdefl sdeflThing;
+        int bounds = sdefl_bound(dataLength);
+        compData = cast(ubyte *)RL_CALLOC(bounds, 1);
+        *compDataLength = sdeflate(&sdeflThing, compData, data, dataLength, COMPRESSION_QUALITY_DEFLATE);   // Compression level 8, same as stbwi
+
+        TraceLog(TraceLogLevel.LOG_INFO, "SYSTEM: Compress data: Original size: %i -> Comp. size: %i", dataLength, *compDataLength);
+    }
+
+    return compData;
+}
+
+/// Decompress data (DEFLATE algorythm)
+ubyte *DecompressData(ubyte *compData, int compDataLength, int *dataLength)
+{
+    ubyte *data = null;
+
+    version(all) { // #if defined(SUPPORT_COMPRESSION_API)
+        // Decompress data from a valid DEFLATE stream
+        data = cast(ubyte *)RL_CALLOC(MAX_DECOMPRESSION_SIZE*1024*1024, 1);
+        int length = sinflate(data, MAX_DECOMPRESSION_SIZE, compData, compDataLength);
+        ubyte *temp = cast(ubyte *)RL_REALLOC(data, length);
+
+        if (temp != null) data = temp;
+        else TraceLog(TraceLogLevel.LOG_WARNING, "SYSTEM: Failed to re-allocate required decompression memory");
+
+        *dataLength = length;
+
+        TraceLog(TraceLogLevel.LOG_INFO, "SYSTEM: Decompress data: Comp. size: %i -> Original size: %i", compDataLength, *dataLength);
+    }
+
+    return data;
+}
+
+/// Encode data to Base64 string
+char *EncodeDataBase64(const ubyte *data, int dataLength, int *outputLength)
+{
+    static const ubyte[] base64encodeTable = [
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+        'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+        'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
+    ];
+
+    static const int[] modTable = [ 0, 2, 1 ];
+
+    *outputLength = 4*((dataLength + 2)/3);
+
+    char *encodedData = cast(char *)RL_MALLOC(*outputLength);
+
+    if (encodedData == null) return null;
+
+    for (int i = 0, j = 0; i < dataLength;)
+    {
+        uint octetA = (i < dataLength)? data[i++] : 0;
+        uint octetB = (i < dataLength)? data[i++] : 0;
+        uint octetC = (i < dataLength)? data[i++] : 0;
+
+        uint triple = (octetA << 0x10) + (octetB << 0x08) + octetC;
+
+        encodedData[j++] = base64encodeTable[(triple >> 3*6) & 0x3F];
+        encodedData[j++] = base64encodeTable[(triple >> 2*6) & 0x3F];
+        encodedData[j++] = base64encodeTable[(triple >> 1*6) & 0x3F];
+        encodedData[j++] = base64encodeTable[(triple >> 0*6) & 0x3F];
+    }
+
+    for (int i = 0; i < modTable[dataLength%3]; i++) encodedData[*outputLength - 1 - i] = '=';
+
+    return encodedData;
+}
+
+/// Decode Base64 string data
+ubyte *DecodeDataBase64(ubyte *data, int *outputLength)
+{
+    static const ubyte[] base64decodeTable = [
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 62, 0, 0, 0, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0, 0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
+        37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
+    ];
+
+    // Get output size of Base64 input data
+    int outLength = 0;
+    for (int i = 0; data[4*i] != 0; i++)
+    {
+        if (data[4*i + 3] == '=')
+        {
+            if (data[4*i + 2] == '=') outLength += 1;
+            else outLength += 2;
+        }
+        else outLength += 3;
+    }
+
+    // Allocate memory to store decoded Base64 data
+    ubyte *decodedData = cast(ubyte *)RL_MALLOC(outLength);
+
+    for (int i = 0; i < outLength/3; i++)
+    {
+        ubyte a = base64decodeTable[data[4*i]];
+        ubyte b = base64decodeTable[data[4*i + 1]];
+        ubyte c = base64decodeTable[data[4*i + 2]];
+        ubyte d = base64decodeTable[data[4*i + 3]];
+
+        decodedData[3*i] = cast(ubyte)((a << 2) | (b >> 4));
+        decodedData[3*i + 1] = cast(ubyte)((b << 4) | (c >> 2));
+        decodedData[3*i + 2] = cast(ubyte)((c << 6) | d);
+    }
+
+    if (outLength%3 == 1)
+    {
+        int n = outLength/3;
+        ubyte a = base64decodeTable[data[4*n]];
+        ubyte b = base64decodeTable[data[4*n + 1]];
+        decodedData[outLength - 1] = cast(ubyte)((a << 2) | (b >> 4));
+    }
+    else if (outLength%3 == 2)
+    {
+        int n = outLength/3;
+        ubyte a = base64decodeTable[data[4*n]];
+        ubyte b = base64decodeTable[data[4*n + 1]];
+        ubyte c = base64decodeTable[data[4*n + 2]];
+        decodedData[outLength - 2] = cast(ubyte)((a << 2) | (b >> 4));
+        decodedData[outLength - 1] = cast(ubyte)((b << 4) | (c >> 2));
+    }
+
+    *outputLength = outLength;
+    return decodedData;
+}
+
+/// Save integer value to storage file (to defined position)
+/// NOTE: Storage positions is directly related to file memory layout (4 bytes each integer)
+bool SaveStorageValue(uint position, int value)
+{
+    bool success = false;
+
+    version(all) { // #if defined(SUPPORT_DATA_STORAGE)
+        char[512] path = 0;
+        strcpy(path.ptr, TextFormat("%s/%s", CORE.Storage.basePath, STORAGE_DATA_FILE.ptr));
+
+        uint dataSize = 0;
+        uint newDataSize = 0;
+        ubyte *fileData = LoadFileData(path.ptr, &dataSize);
+        ubyte *newFileData = null;
+
+        if (fileData != null)
+        {
+            if (dataSize <= (position*int.sizeof))
+            {
+                // Increase data size up to position and store value
+                newDataSize = (position + 1)*int(int.sizeof);
+                newFileData = cast(ubyte *)RL_REALLOC(fileData, newDataSize);
+
+                if (newFileData != null)
+                {
+                    // RL_REALLOC succeded
+                    int *dataPtr = cast(int *)newFileData;
+                    dataPtr[position] = value;
+                }
+                else
+                {
+                    // RL_REALLOC failed
+                    TraceLog(TraceLogLevel.LOG_WARNING, "FILEIO: [%s] Failed to realloc data (%u), position in bytes (%u) bigger than actual file size", path.ptr, dataSize, position*int(int.sizeof));
+
+                    // We store the old size of the file
+                    newFileData = fileData;
+                    newDataSize = dataSize;
+                }
+            }
+            else
+            {
+                // Store the old size of the file
+                newFileData = fileData;
+                newDataSize = dataSize;
+
+                // Replace value on selected position
+                int *dataPtr = cast(int *)newFileData;
+                dataPtr[position] = value;
+            }
+
+            success = SaveFileData(path.ptr, newFileData, newDataSize);
+            RL_FREE(newFileData);
+
+            TraceLog(TraceLogLevel.LOG_INFO, "FILEIO: [%s] Saved storage value: %i", path.ptr, value);
+        }
+        else
+        {
+            TraceLog(TraceLogLevel.LOG_INFO, "FILEIO: [%s] File created successfully", path.ptr);
+
+            dataSize = (position + 1)*int(int.sizeof);
+            fileData = cast(ubyte *)RL_MALLOC(dataSize);
+            int *dataPtr = cast(int *)fileData;
+            dataPtr[position] = value;
+
+            success = SaveFileData(path.ptr, fileData, dataSize);
+            UnloadFileData(fileData);
+
+            TraceLog(TraceLogLevel.LOG_INFO, "FILEIO: [%s] Saved storage value: %i", path.ptr, value);
+        }
+    }
+
+    return success;
+}
+
+/// Load integer value from storage file (from defined position)
+/// NOTE: If requested position could not be found, value 0 is returned
+int LoadStorageValue(uint position)
+{
+    int value = 0;
+
+    version(all) { // #if defined(SUPPORT_DATA_STORAGE)
+        char[512] path = 0;
+        strcpy(path.ptr, TextFormat("%s/%s", CORE.Storage.basePath, STORAGE_DATA_FILE.ptr));
+
+        uint dataSize = 0;
+        ubyte *fileData = LoadFileData(path.ptr, &dataSize);
+
+        if (fileData != null)
+        {
+            if (dataSize < (position*4)) TraceLog(TraceLogLevel.LOG_WARNING, "FILEIO: [%s] Failed to find storage position: %i", path.ptr, position);
+            else
+            {
+                int *dataPtr = cast(int *)fileData;
+                value = dataPtr[position];
+            }
+
+            UnloadFileData(fileData);
+
+            TraceLog(TraceLogLevel.LOG_INFO, "FILEIO: [%s] Loaded storage value: %i", path.ptr, value);
+        }
+    }
+    return value;
+}
+
+/// Open URL with default system browser (if available)
+/// NOTE: This function is only safe to use if you control the URL given.
+/// A user could craft a malicious string performing another action.
+/// Only call this function yourself not with user input or make sure to check the string yourself.
+/// Ref: https://github.com/raysan5/raylib/issues/686
+void OpenURL(const char *url)
+{
+    // Small security check trying to avoid (partially) malicious code...
+    // sorry for the inconvenience when you hit this point...
+    if (strchr(url, '\'') != null)
+    {
+        TraceLog(TraceLogLevel.LOG_WARNING, "SYSTEM: Provided URL is not valid");
+    }
+    else
+    {
+        version(all) { // #if defined(PLATFORM_DESKTOP)
+            char *cmd = cast(char *)RL_CALLOC(strlen(url) + 10, char.sizeof);
+            version(Windows) {
+                sprintf(cmd, "explorer %s", url);
+            }
+            version(linux) {
+                sprintf(cmd, "xdg-open '%s'", url); // Alternatives: firefox, x-www-browser
+            }
+            version(FreeBSD) {
+                sprintf(cmd, "xdg-open '%s'", url); // Alternatives: firefox, x-www-browser
+            }
+            version(OSX) {
+                sprintf(cmd, "open '%s'", url);
+            }
+            system(cmd);
+            RL_FREE(cmd);
+        }
+        version(none) { // #if defined(PLATFORM_WEB)
+            emscripten_run_script(TextFormat("window.open('%s', '_blank')", url));
+        }
+    }
+}
+
+//----------------------------------------------------------------------------------
+// Module Functions Definition - Input (Keyboard, Mouse, Gamepad) Functions
+//----------------------------------------------------------------------------------
+/// Check if a key has been pressed once
+bool IsKeyPressed(int key)
+{
+    bool pressed = false;
+
+    if ((CORE.Input.Keyboard.previousKeyState[key] == 0) && (CORE.Input.Keyboard.currentKeyState[key] == 1)) pressed = true;
+
+    return pressed;
+}
+
+/// Check if a key is being pressed (key held down)
+bool IsKeyDown(int key)
+{
+    if (CORE.Input.Keyboard.currentKeyState[key] == 1) return true;
+    else return false;
+}
+
+/// Check if a key has been released once
+bool IsKeyReleased(int key)
+{
+    bool released = false;
+
+    if ((CORE.Input.Keyboard.previousKeyState[key] == 1) && (CORE.Input.Keyboard.currentKeyState[key] == 0)) released = true;
+
+    return released;
+}
+
+/// Check if a key is NOT being pressed (key not held down)
+bool IsKeyUp(int key)
+{
+    if (CORE.Input.Keyboard.currentKeyState[key] == 0) return true;
+    else return false;
+}
+
+/// Get the last key pressed
+int GetKeyPressed()
+{
+    int value = 0;
+
+    if (CORE.Input.Keyboard.keyPressedQueueCount > 0)
+    {
+        // Get character from the queue head
+        value = CORE.Input.Keyboard.keyPressedQueue[0];
+
+        // Shift elements 1 step toward the head.
+        for (int i = 0; i < (CORE.Input.Keyboard.keyPressedQueueCount - 1); i++)
+            CORE.Input.Keyboard.keyPressedQueue[i] = CORE.Input.Keyboard.keyPressedQueue[i + 1];
+
+        // Reset last character in the queue
+        CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = 0;
+        CORE.Input.Keyboard.keyPressedQueueCount--;
+    }
+
+    return value;
+}
+
+/// Get the last char pressed
+int GetCharPressed()
+{
+    int value = 0;
+
+    if (CORE.Input.Keyboard.charPressedQueueCount > 0)
+    {
+        // Get character from the queue head
+        value = CORE.Input.Keyboard.charPressedQueue[0];
+
+        // Shift elements 1 step toward the head.
+        for (int i = 0; i < (CORE.Input.Keyboard.charPressedQueueCount - 1); i++)
+            CORE.Input.Keyboard.charPressedQueue[i] = CORE.Input.Keyboard.charPressedQueue[i + 1];
+
+        // Reset last character in the queue
+        CORE.Input.Keyboard.charPressedQueue[CORE.Input.Keyboard.charPressedQueueCount] = 0;
+        CORE.Input.Keyboard.charPressedQueueCount--;
+    }
+
+    return value;
+}
+
+/// Set a custom key to exit program
+/// NOTE: default exitKey is ESCAPE
+void SetExitKey(int key)
+{
+    version(all) { // #if !defined(PLATFORM_ANDROID)
+        CORE.Input.Keyboard.exitKey = key;
+    }
+}
+
+// NOTE: Gamepad support not implemented in emscripten GLFW3 (PLATFORM_WEB)
+
+/// Check if a gamepad is available
+bool IsGamepadAvailable(int gamepad)
+{
+    bool result = false;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad]) result = true;
+
+    return result;
+}
+
+/// Get gamepad internal name id
+const(char)* GetGamepadName(int gamepad)
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        if (CORE.Input.Gamepad.ready[gamepad]) return glfwGetJoystickName(gamepad);
+        else return null;
+    }
+    else version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        if (CORE.Input.Gamepad.ready[gamepad]) ioctl(CORE.Input.Gamepad.streamId[gamepad], JSIOCGNAME(64), &CORE.Input.Gamepad.name[gamepad]);
+        return CORE.Input.Gamepad.name[gamepad];
+    }
+    else version(none) { // #if defined(PLATFORM_WEB)
+        return CORE.Input.Gamepad.name[gamepad];
+    }
+    else return null;
+}
+
+/// Get gamepad axis count
+int GetGamepadAxisCount(int gamepad)
+{
+    version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        int axisCount = 0;
+        if (CORE.Input.Gamepad.ready[gamepad]) ioctl(CORE.Input.Gamepad.streamId[gamepad], JSIOCGAXES, &axisCount);
+        CORE.Input.Gamepad.axisCount = axisCount;
+    }
+
+    return CORE.Input.Gamepad.axisCount;
+}
+
+/// Get axis movement vector for a gamepad
+float GetGamepadAxisMovement(int gamepad, int axis)
+{
+    float value = 0;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (axis < MAX_GAMEPAD_AXIS) &&
+        (fabsf(CORE.Input.Gamepad.axisState[gamepad][axis]) > 0.1f)) value = CORE.Input.Gamepad.axisState[gamepad][axis];      // 0.1f = GAMEPAD_AXIS_MINIMUM_DRIFT/DELTA
+
+    return value;
+}
+
+/// Check if a gamepad button has been pressed once
+bool IsGamepadButtonPressed(int gamepad, int button)
+{
+    bool pressed = false;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE.Input.Gamepad.previousButtonState[gamepad][button] == 0) && (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 1)) pressed = true;
+
+    return pressed;
+}
+
+/// Check if a gamepad button is being pressed
+bool IsGamepadButtonDown(int gamepad, int button)
+{
+    bool result = false;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 1)) result = true;
+
+    return result;
+}
+
+/// Check if a gamepad button has NOT been pressed once
+bool IsGamepadButtonReleased(int gamepad, int button)
+{
+    bool released = false;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE.Input.Gamepad.previousButtonState[gamepad][button] == 1) && (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 0)) released = true;
+
+    return released;
+}
+
+/// Check if a gamepad button is NOT being pressed
+bool IsGamepadButtonUp(int gamepad, int button)
+{
+    bool result = false;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 0)) result = true;
+
+    return result;
+}
+
+/// Get the last gamepad button pressed
+int GetGamepadButtonPressed()
+{
+    return CORE.Input.Gamepad.lastButtonPressed;
+}
+
+/// Set internal gamepad mappings
+int SetGamepadMappings(const char *mappings)
+{
+    int result = 0;
+
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        result = glfwUpdateGamepadMappings(mappings);
+    }
+
+    return result;
+}
+
+/// Check if a mouse button has been pressed once
+bool IsMouseButtonPressed(int button)
+{
+    bool pressed = false;
+
+    if ((CORE.Input.Mouse.currentButtonState[button] == 1) && (CORE.Input.Mouse.previousButtonState[button] == 0)) pressed = true;
+
+    // Map touches to mouse buttons checking
+    if ((CORE.Input.Touch.currentTouchState[button] == 1) && (CORE.Input.Touch.previousTouchState[button] == 0)) pressed = true;
+
+    return pressed;
+}
+
+/// Check if a mouse button is being pressed
+bool IsMouseButtonDown(int button)
+{
+    bool down = false;
+
+    if (CORE.Input.Mouse.currentButtonState[button] == 1) down = true;
+
+    // Map touches to mouse buttons checking
+    if (CORE.Input.Touch.currentTouchState[button] == 1) down = true;
+
+    return down;
+}
+
+/// Check if a mouse button has been released once
+bool IsMouseButtonReleased(int button)
+{
+    bool released = false;
+
+    if ((CORE.Input.Mouse.currentButtonState[button] == 0) && (CORE.Input.Mouse.previousButtonState[button] == 1)) released = true;
+
+    // Map touches to mouse buttons checking
+    if ((CORE.Input.Touch.currentTouchState[button] == 0) && (CORE.Input.Touch.previousTouchState[button] == 1)) released = true;
+
+    return released;
+}
+
+/// Check if a mouse button is NOT being pressed
+bool IsMouseButtonUp(int button)
+{
+    return !IsMouseButtonDown(button);
+}
+
+/// Get mouse position X
+int GetMouseX()
+{
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        return cast(int)CORE.Input.Touch.position[0].x;
+    } else {
+        return cast(int)((CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x);
+    }
+}
+
+/// Get mouse position Y
+int GetMouseY()
+{
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        return cast(int)CORE.Input.Touch.position[0].y;
+    } else {
+        return cast(int)((CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y)*CORE.Input.Mouse.scale.y);
+    }
+}
+
+/// Get mouse position XY
+Vector2 GetMousePosition()
+{
+    Vector2 position;
+
+    version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_WEB)
+        position = GetTouchPosition(0);
+    } else {
+        position.x = (CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x;
+        position.y = (CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y)*CORE.Input.Mouse.scale.y;
+    }
+
+    return position;
+}
+
+/// Get mouse delta between frames
+Vector2 GetMouseDelta()
+{
+    Vector2 delta;
+
+    delta.x = CORE.Input.Mouse.currentPosition.x - CORE.Input.Mouse.previousPosition.x;
+    delta.y = CORE.Input.Mouse.currentPosition.y - CORE.Input.Mouse.previousPosition.y;
+
+    return delta;
+}
+
+/// Set mouse position XY
+void SetMousePosition(int x, int y)
+{
+    CORE.Input.Mouse.currentPosition = Vector2(x, y);
+    version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+                   // NOTE: emscripten not implemented
+        glfwSetCursorPos(CORE.Window.handle, CORE.Input.Mouse.currentPosition.x, CORE.Input.Mouse.currentPosition.y);
+    }
+}
+
+/// Set mouse offset
+/// NOTE: Useful when rendering to different size targets
+void SetMouseOffset(int offsetX, int offsetY)
+{
+    CORE.Input.Mouse.offset = Vector2(offsetX, offsetY);
+}
+
+/// Set mouse scaling
+/// NOTE: Useful when rendering to different size targets
+void SetMouseScale(float scaleX, float scaleY)
+{
+    CORE.Input.Mouse.scale = Vector2(scaleX, scaleY);
+}
+
+/// Get mouse wheel movement Y
+float GetMouseWheelMove()
+{
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        return 0.0f;
+    } else version(none) { // #if defined(PLATFORM_WEB)
+        return CORE.Input.Mouse.previousWheelMove/100.0f;
+    } else {
+        return CORE.Input.Mouse.previousWheelMove;
+    }
+}
+
+/// Set mouse cursor
+/// NOTE: This is a no-op on platforms other than PLATFORM_DESKTOP
+void SetMouseCursor(int cursor)
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        CORE.Input.Mouse.cursor = cursor;
+        if (cursor == MouseCursor.MOUSE_CURSOR_DEFAULT) glfwSetCursor(CORE.Window.handle, null);
+        else
+        {
+            // NOTE: We are relating internal GLFW enum values to our MouseCursor enum values
+            glfwSetCursor(CORE.Window.handle, glfwCreateStandardCursor(0x00036000 + cursor));
+        }
+    }
+}
+
+/// Get touch position X for touch point 0 (relative to screen size)
+int GetTouchX()
+{
+    version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_WEB)
+        return cast(int)CORE.Input.Touch.position[0].x;
+    } else {   // PLATFORM_DESKTOP, PLATFORM_RPI, PLATFORM_DRM
+        return GetMouseX();
+    }
+}
+
+/// Get touch position Y for touch point 0 (relative to screen size)
+int GetTouchY()
+{
+    version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_WEB)
+        return cast(int)CORE.Input.Touch.position[0].y;
+    } else { // PLATFORM_DESKTOP, PLATFORM_RPI, PLATFORM_DRM
+        return GetMouseY();
+    }
+}
+
+/// Get touch position XY for a touch point index (relative to screen size)
+/// TODO: Touch position should be scaled depending on display size and render size
+Vector2 GetTouchPosition(int index)
+{
+    Vector2 position = Vector2(-1.0f, -1.0f);
+
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        // TODO: GLFW does not support multi-touch input just yet
+        // https://www.codeproject.com/Articles/668404/Programming-for-Multi-Touch
+        // https://docs.microsoft.com/en-us/windows/win32/wintouch/getting-started-with-multi-touch-messages
+        if (index == 0) position = GetMousePosition();
+    }
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        if (index < MAX_TOUCH_POINTS) position = CORE.Input.Touch.position[index];
+        else TraceLog(TraceLogLevel.LOG_WARNING, "INPUT: Required touch point out of range (Max touch points: %i)", MAX_TOUCH_POINTS);
+
+        if ((CORE.Window.screen.width > CORE.Window.display.width) || (CORE.Window.screen.height > CORE.Window.display.height))
+        {
+            position.x = position.x*(cast(float)CORE.Window.screen.width/cast(float)(CORE.Window.display.width - CORE.Window.renderOffset.x)) - CORE.Window.renderOffset.x/2;
+            position.y = position.y*(cast(float)CORE.Window.screen.height/cast(float)(CORE.Window.display.height - CORE.Window.renderOffset.y)) - CORE.Window.renderOffset.y/2;
+        }
+        else
+        {
+            position.x = position.x*(cast(float)CORE.Window.render.width/cast(float)CORE.Window.display.width) - CORE.Window.renderOffset.x/2;
+            position.y = position.y*(cast(float)CORE.Window.render.height/cast(float)CORE.Window.display.height) - CORE.Window.renderOffset.y/2;
+        }
+    }
+    version(none) { // #if defined(PLATFORM_WEB) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        if (index < MAX_TOUCH_POINTS) position = CORE.Input.Touch.position[index];
+        else TraceLog(TraceLogLevel.LOG_WARNING, "INPUT: Required touch point out of range (Max touch points: %i)", MAX_TOUCH_POINTS);
+    }
+
+    return position;
+}
+
+/// Get touch point identifier for given index
+int GetTouchPointId(int index)
+{
+    int id = -1;
+
+    if (index < MAX_TOUCH_POINTS) id = CORE.Input.Touch.pointId[index];
+
+    return id;
+}
+
+/// Get number of touch points
+int GetTouchPointCount()
+{
+    return CORE.Input.Touch.pointCount;
 }
