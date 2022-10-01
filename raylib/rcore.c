@@ -3013,8 +3013,6 @@ long GetFileModTime(const char *fileName)
     return 0;
 }
 
-#endif
-
 // Compress data (DEFLATE algorythm)
 unsigned char *CompressData(unsigned char *data, int dataLength, int *compDataLength)
 {
@@ -3716,7 +3714,6 @@ int GetTouchPointCount(void)
 // NOTE: width and height represent the screen (framebuffer) desired size, not actual display size
 // If width or height are 0, default display size will be used for framebuffer size
 // NOTE: returns false in case graphic device could not be created
-#if 0 // in D
 bool InitGraphicsDevice(int width, int height)
 {
     CORE.Window.screen.width = width;            // User desired width
