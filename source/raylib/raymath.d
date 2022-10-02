@@ -1047,7 +1047,28 @@ Matrix MatrixAdd(Matrix left, Matrix right)
 }
 // Subtract two matrices (left - right)
 Matrix MatrixSubtract(Matrix left, Matrix right)
+{
+    auto result = Matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
+    result.m0 = left.m0 - right.m0;
+    result.m1 = left.m1 - right.m1;
+    result.m2 = left.m2 - right.m2;
+    result.m3 = left.m3 - right.m3;
+    result.m4 = left.m4 - right.m4;
+    result.m5 = left.m5 - right.m5;
+    result.m6 = left.m6 - right.m6;
+    result.m7 = left.m7 - right.m7;
+    result.m8 = left.m8 - right.m8;
+    result.m9 = left.m9 - right.m9;
+    result.m10 = left.m10 - right.m10;
+    result.m11 = left.m11 - right.m11;
+    result.m12 = left.m12 - right.m12;
+    result.m13 = left.m13 - right.m13;
+    result.m14 = left.m14 - right.m14;
+    result.m15 = left.m15 - right.m15;
+
+    return result;
+}
 // Get two matrix multiplication
 // NOTE: When multiplying matrices... the order matters!
 Matrix MatrixMultiply(Matrix left, Matrix right)
