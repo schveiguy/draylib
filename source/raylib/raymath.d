@@ -167,7 +167,7 @@ struct float16
 //----------------------------------------------------------------------------------
 
 // Clamp float value
-float Clamp (float value, float min, float max)
+float Clamp(float value, float min, float max)
 {
     float result = value < min ? min : value;
 
@@ -177,7 +177,7 @@ float Clamp (float value, float min, float max)
 }
 
 // Calculate linear interpolation between two floats
-float Lerp (float start, float end, float amount)
+float Lerp(float start, float end, float amount)
 {
     float result = start + amount * (end - start);
 
@@ -185,7 +185,7 @@ float Lerp (float start, float end, float amount)
 }
 
 // Normalize input value within input range
-float Normalize (float value, float start, float end)
+float Normalize(float value, float start, float end)
 {
     float result = (value - start) / (end - start);
 
@@ -193,7 +193,7 @@ float Normalize (float value, float start, float end)
 }
 
 // Remap input value within input range to output range
-float Remap (float value, float inputStart, float inputEnd, float outputStart, float outputEnd)
+float Remap(float value, float inputStart, float inputEnd, float outputStart, float outputEnd)
 {
     float result = (value - inputStart) / (inputEnd - inputStart) * (outputEnd - outputStart) + outputStart;
 
@@ -217,7 +217,7 @@ Vector2 Vector2One()
 }
 
 // Add two vectors (v1 + v2)
-Vector2 Vector2Add (Vector2 v1, Vector2 v2)
+Vector2 Vector2Add(Vector2 v1, Vector2 v2)
 {
     Vector2 result = { v1.x + v2.x, v1.y + v2.y };
 
@@ -225,7 +225,7 @@ Vector2 Vector2Add (Vector2 v1, Vector2 v2)
 }
 
 // Add vector and float value
-Vector2 Vector2AddValue (Vector2 v, float add)
+Vector2 Vector2AddValue(Vector2 v, float add)
 {
     Vector2 result = { v.x + add, v.y + add };
 
@@ -233,7 +233,7 @@ Vector2 Vector2AddValue (Vector2 v, float add)
 }
 
 // Subtract two vectors (v1 - v2)
-Vector2 Vector2Subtract (Vector2 v1, Vector2 v2)
+Vector2 Vector2Subtract(Vector2 v1, Vector2 v2)
 {
     Vector2 result = { v1.x - v2.x, v1.y - v2.y };
 
@@ -241,7 +241,7 @@ Vector2 Vector2Subtract (Vector2 v1, Vector2 v2)
 }
 
 // Subtract vector by float value
-Vector2 Vector2SubtractValue (Vector2 v, float sub)
+Vector2 Vector2SubtractValue(Vector2 v, float sub)
 {
     Vector2 result = { v.x - sub, v.y - sub };
 
@@ -249,7 +249,7 @@ Vector2 Vector2SubtractValue (Vector2 v, float sub)
 }
 
 // Calculate vector length
-float Vector2Length (Vector2 v)
+float Vector2Length(Vector2 v)
 {
     float result = sqrtf(v.x * v.x + v.y * v.y);
 
@@ -257,7 +257,7 @@ float Vector2Length (Vector2 v)
 }
 
 // Calculate vector square length
-float Vector2LengthSqr (Vector2 v)
+float Vector2LengthSqr(Vector2 v)
 {
     float result = v.x * v.x + v.y * v.y;
 
@@ -265,7 +265,7 @@ float Vector2LengthSqr (Vector2 v)
 }
 
 // Calculate two vectors dot product
-float Vector2DotProduct (Vector2 v1, Vector2 v2)
+float Vector2DotProduct(Vector2 v1, Vector2 v2)
 {
     float result = v1.x * v2.x + v1.y * v2.y;
 
@@ -273,7 +273,7 @@ float Vector2DotProduct (Vector2 v1, Vector2 v2)
 }
 
 // Calculate distance between two vectors
-float Vector2Distance (Vector2 v1, Vector2 v2)
+float Vector2Distance(Vector2 v1, Vector2 v2)
 {
     float result = sqrtf((v1.x - v2.x) * (v1.x - v2.x) + (v1.y - v2.y) * (v1.y - v2.y));
 
@@ -281,7 +281,7 @@ float Vector2Distance (Vector2 v1, Vector2 v2)
 }
 
 // Calculate angle from two vectors in X-axis
-float Vector2Angle (Vector2 v1, Vector2 v2)
+float Vector2Angle(Vector2 v1, Vector2 v2)
 {
     float result = atan2f(v2.y - v1.y, v2.x - v1.x) * (180.0f / PI);
 
@@ -291,7 +291,7 @@ float Vector2Angle (Vector2 v1, Vector2 v2)
 }
 
 // Scale vector (multiply by value)
-Vector2 Vector2Scale (Vector2 v, float scale)
+Vector2 Vector2Scale(Vector2 v, float scale)
 {
     Vector2 result = { v.x * scale, v.y * scale };
 
@@ -299,7 +299,7 @@ Vector2 Vector2Scale (Vector2 v, float scale)
 }
 
 // Multiply vector by vector
-Vector2 Vector2Multiply (Vector2 v1, Vector2 v2)
+Vector2 Vector2Multiply(Vector2 v1, Vector2 v2)
 {
     Vector2 result = { v1.x * v2.x, v1.y * v2.y };
 
@@ -307,7 +307,7 @@ Vector2 Vector2Multiply (Vector2 v1, Vector2 v2)
 }
 
 // Negate vector
-Vector2 Vector2Negate (Vector2 v)
+Vector2 Vector2Negate(Vector2 v)
 {
     Vector2 result = { -v.x, -v.y };
 
@@ -315,7 +315,7 @@ Vector2 Vector2Negate (Vector2 v)
 }
 
 // Divide vector by vector
-Vector2 Vector2Divide (Vector2 v1, Vector2 v2)
+Vector2 Vector2Divide(Vector2 v1, Vector2 v2)
 {
     Vector2 result = { v1.x / v2.x, v1.y / v2.y };
 
@@ -323,7 +323,7 @@ Vector2 Vector2Divide (Vector2 v1, Vector2 v2)
 }
 
 // Normalize provided vector
-Vector2 Vector2Normalize (Vector2 v)
+Vector2 Vector2Normalize(Vector2 v)
 {
     auto result = Vector2(0, 0);
     float length = sqrtf(v.x * v.x + v.y * v.y);
@@ -338,7 +338,7 @@ Vector2 Vector2Normalize (Vector2 v)
 }
 
 // Calculate linear interpolation between two vectors
-Vector2 Vector2Lerp (Vector2 v1, Vector2 v2, float amount)
+Vector2 Vector2Lerp(Vector2 v1, Vector2 v2, float amount)
 {
     auto result = Vector2(0, 0);
 
@@ -351,7 +351,7 @@ Vector2 Vector2Lerp (Vector2 v1, Vector2 v2, float amount)
 // Calculate reflected vector to normal
 
 // Dot product
-Vector2 Vector2Reflect (Vector2 v, Vector2 normal)
+Vector2 Vector2Reflect(Vector2 v, Vector2 normal)
 {
     auto result = Vector2(0, 0);
 
@@ -364,7 +364,7 @@ Vector2 Vector2Reflect (Vector2 v, Vector2 normal)
 }
 
 // Rotate vector by angle
-Vector2 Vector2Rotate (Vector2 v, float angle)
+Vector2 Vector2Rotate(Vector2 v, float angle)
 {
     auto result = Vector2(0, 0);
 
@@ -375,7 +375,7 @@ Vector2 Vector2Rotate (Vector2 v, float angle)
 }
 
 // Move Vector towards target
-Vector2 Vector2MoveTowards (Vector2 v, Vector2 target, float maxDistance)
+Vector2 Vector2MoveTowards(Vector2 v, Vector2 target, float maxDistance)
 {
     auto result = Vector2(0, 0);
 
@@ -398,10 +398,15 @@ Vector2 Vector2MoveTowards (Vector2 v, Vector2 target, float maxDistance)
 //----------------------------------------------------------------------------------
 
 // Vector with components value 0.0f
-Vector3 Vector3Zero ();
+Vector3 Vector3Zero ()
+{
+    Vector3 result = { 0.0f, 0.0f, 0.0f };
+
+    return result;
+}
 
 // Vector with components value 1.0f
-Vector3 Vector3One ();
+Vector3 Vector3One();
 
 // Add two vectors
 Vector3 Vector3Add (Vector3 v1, Vector3 v2);
