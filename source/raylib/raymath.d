@@ -338,7 +338,15 @@ Vector2 Vector2Normalize (Vector2 v)
 }
 
 // Calculate linear interpolation between two vectors
-Vector2 Vector2Lerp (Vector2 v1, Vector2 v2, float amount);
+Vector2 Vector2Lerp (Vector2 v1, Vector2 v2, float amount)
+{
+    auto result = Vector2(0, 0);
+
+    result.x = v1.x + amount * (v2.x - v1.x);
+    result.y = v1.y + amount * (v2.y - v1.y);
+
+    return result;
+}
 
 // Calculate reflected vector to normal
 
