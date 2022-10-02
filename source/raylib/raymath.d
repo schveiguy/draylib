@@ -1453,7 +1453,28 @@ Matrix MatrixLookAt(Vector3 eye, Vector3 target, Vector3 up)
 }
 // Get float array of matrix data
 float16 MatrixToFloatV(Matrix mat)
+{
+    float16 result;
 
+    result.v[0] = mat.m0;
+    result.v[1] = mat.m1;
+    result.v[2] = mat.m2;
+    result.v[3] = mat.m3;
+    result.v[4] = mat.m4;
+    result.v[5] = mat.m5;
+    result.v[6] = mat.m6;
+    result.v[7] = mat.m7;
+    result.v[8] = mat.m8;
+    result.v[9] = mat.m9;
+    result.v[10] = mat.m10;
+    result.v[11] = mat.m11;
+    result.v[12] = mat.m12;
+    result.v[13] = mat.m13;
+    result.v[14] = mat.m14;
+    result.v[15] = mat.m15;
+
+    return result;
+}
 //----------------------------------------------------------------------------------
 // Module Functions Definition - Quaternion math
 //----------------------------------------------------------------------------------
