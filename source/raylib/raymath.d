@@ -1525,7 +1525,20 @@ float QuaternionLength(Quaternion q)
 }
 // Normalize provided quaternion
 Quaternion QuaternionNormalize(Quaternion q)
+{
+    auto result = Vector4(0, 0, 0, 0);
 
+    float length = sqrtf(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+    if (length == 0.0f) length = 1.0f;
+    float ilength = 1.0f / length;
+
+    result.x = q.x * ilength;
+    result.y = q.y * ilength;
+    result.z = q.z * ilength;
+    result.w = q.w * ilength;
+
+    return result;
+}
 // Invert provided quaternion
 Quaternion QuaternionInvert(Quaternion q)
 
