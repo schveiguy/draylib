@@ -1613,7 +1613,28 @@ Quaternion QuaternionLerp(Quaternion q1, Quaternion q2, float amount)
 
 // QuaternionNormalize(q);
 Quaternion QuaternionNlerp(Quaternion q1, Quaternion q2, float amount)
+{
+    auto result = Vector4(0, 0, 0, 0);
 
+    // QuaternionLerp(q1, q2, amount)
+    result.x = q1.x + amount * (q2.x - q1.x);
+    result.y = q1.y + amount * (q2.y - q1.y);
+    result.z = q1.z + amount * (q2.z - q1.z);
+    result.w = q1.w + amount * (q2.w - q1.w);
+
+    // QuaternionNormalize(q);
+    Quaternion q = result;
+    float length = sqrtf(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+    if (length == 0.0f) length = 1.0f;
+    float ilength = 1.0f/length;
+
+    result.x = q.x * ilength;
+    result.y = q.y * ilength;
+    result.z = q.z * ilength;
+    result.w = q.w * ilength;
+
+    return result;
+}
 // Calculates spherical linear interpolation between two quaternions
 Quaternion QuaternionSlerp(Quaternion q1, Quaternion q2, float amount)
 
