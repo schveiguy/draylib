@@ -1597,7 +1597,16 @@ Quaternion QuaternionDivide(Quaternion q1, Quaternion q2)
 }
 // Calculate linear interpolation between two quaternions
 Quaternion QuaternionLerp(Quaternion q1, Quaternion q2, float amount)
+{
+    auto result = Vector4(0, 0, 0, 0);
 
+    result.x = q1.x + amount * (q2.x - q1.x);
+    result.y = q1.y + amount * (q2.y - q1.y);
+    result.z = q1.z + amount * (q2.z - q1.z);
+    result.w = q1.w + amount * (q2.w - q1.w);
+
+    return result;
+}
 // Calculate slerp-optimized interpolation between two quaternions
 
 // QuaternionLerp(q1, q2, amount)
