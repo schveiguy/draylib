@@ -1481,6 +1481,11 @@ float16 MatrixToFloatV(Matrix mat)
 
 // Add two quaternions
 Quaternion QuaternionAdd(Quaternion q1, Quaternion q2)
+{
+    Quaternion result = {q1.x + q2.x, q1.y + q2.y, q1.z + q2.z, q1.w + q2.w};
+
+    return result;
+}
 
 // Add quaternion and float value
 Quaternion QuaternionAddValue(Quaternion q, float add)
