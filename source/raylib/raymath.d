@@ -555,6 +555,11 @@ Vector2 Vector3Angle(Vector3 v1, Vector3 v2)
 }
 // Negate provided vector (invert direction)
 Vector3 Vector3Negate(Vector3 v)
+{
+    Vector3 result = { -v.x, -v.y, -v.z };
+
+    return result;
+}
 
 // Divide vector by vector
 Vector3 Vector3Divide(Vector3 v1, Vector3 v2)
