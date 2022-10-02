@@ -525,6 +525,16 @@ float Vector3DotProduct(Vector3 v1, Vector3 v2)
 
 // Calculate distance between two vectors
 float Vector3Distance(Vector3 v1, Vector3 v2)
+{
+    float result = 0.0f;
+
+    float dx = v2.x - v1.x;
+    float dy = v2.y - v1.y;
+    float dz = v2.z - v1.z;
+    result = sqrtf(dx * dx + dy * dy + dz * dz);
+
+    return result;
+}
 
 // Calculate angle between two vectors in XY and XZ
 
