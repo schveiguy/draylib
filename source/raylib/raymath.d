@@ -1012,6 +1012,14 @@ Matrix MatrixNormalize(Matrix mat)
 }
 // Get identity matrix
 Matrix MatrixIdentity()
+{
+    Matrix result = { 1.0f, 0.0f, 0.0f, 0.0f,
+                      0.0f, 1.0f, 0.0f, 0.0f,
+                      0.0f, 0.0f, 1.0f, 0.0f,
+                      0.0f, 0.0f, 0.0f, 1.0f };
+
+    return result;
+}
 
 // Add two matrices
 Matrix MatrixAdd(Matrix left, Matrix right)
