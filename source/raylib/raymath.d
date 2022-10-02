@@ -1489,6 +1489,11 @@ Quaternion QuaternionAdd(Quaternion q1, Quaternion q2)
 
 // Add quaternion and float value
 Quaternion QuaternionAddValue(Quaternion q, float add)
+{
+    Quaternion result = {q.x + add, q.y + add, q.z + add, q.w + add};
+
+    return result;
+}
 
 // Subtract two quaternions
 Quaternion QuaternionSubtract(Quaternion q1, Quaternion q2)
