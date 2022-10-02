@@ -283,7 +283,7 @@ struct Camera3D
     Vector3 position; // Camera position
     Vector3 target; // Camera target it looks-at
     Vector3 up; // Camera up vector (rotation over its axis)
-    float fovy; // Camera field-of-view apperture in Y (degrees) in perspective, used as near plane width in orthographic
+    float fovy = 0; // Camera field-of-view apperture in Y (degrees) in perspective, used as near plane width in orthographic
     int projection; // Camera projection: CAMERA_PERSPECTIVE or CAMERA_ORTHOGRAPHIC
 }
 
@@ -752,11 +752,11 @@ enum ShaderLocationIndex
     SHADER_LOC_MAP_CUBEMAP = 22, // Shader location: samplerCube texture: cubemap
     SHADER_LOC_MAP_IRRADIANCE = 23, // Shader location: samplerCube texture: irradiance
     SHADER_LOC_MAP_PREFILTER = 24, // Shader location: samplerCube texture: prefilter
-    SHADER_LOC_MAP_BRDF = 25 // Shader location: sampler2d texture: brdf
+    SHADER_LOC_MAP_BRDF = 25, // Shader location: sampler2d texture: brdf
+    SHADER_LOC_MAP_DIFFUSE = SHADER_LOC_MAP_ALBEDO,
+    SHADER_LOC_MAP_SPECULAR = SHADER_LOC_MAP_METALNESS
 }
 
-enum SHADER_LOC_MAP_DIFFUSE = ShaderLocationIndex.SHADER_LOC_MAP_ALBEDO;
-enum SHADER_LOC_MAP_SPECULAR = ShaderLocationIndex.SHADER_LOC_MAP_METALNESS;
 
 // Shader uniform data type
 enum ShaderUniformDataType

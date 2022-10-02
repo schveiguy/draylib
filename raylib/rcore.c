@@ -2230,7 +2230,6 @@ void EndVrStereoMode(void)
 {
     rlDisableStereoRender();
 }
-#endif
 
 // Load VR stereo config for VR simulator device parameters
 VrStereoConfig LoadVrStereoConfig(VrDeviceInfo device)
@@ -2710,6 +2709,7 @@ void SetRandomSeed(unsigned int seed)
 {
     srand(seed);
 }
+#endif
 
 // Check if the file exists
 bool FileExists(const char *fileName)
