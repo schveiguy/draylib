@@ -351,7 +351,17 @@ Vector2 Vector2Lerp (Vector2 v1, Vector2 v2, float amount)
 // Calculate reflected vector to normal
 
 // Dot product
-Vector2 Vector2Reflect (Vector2 v, Vector2 normal);
+Vector2 Vector2Reflect (Vector2 v, Vector2 normal)
+{
+    auto result = Vector2(0, 0);
+
+    float dotProduct = (v.x * normal.x + v.y * normal.y); // Dot product
+
+    result.x = v.x - (2.0f * normal.x) * dotProduct;
+    result.y = v.y - (2.0f * normal.y) * dotProduct;
+
+    return result;
+}
 
 // Rotate vector by angle
 Vector2 Vector2Rotate (Vector2 v, float angle);
