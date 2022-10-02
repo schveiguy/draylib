@@ -1212,7 +1212,33 @@ Matrix MatrixRotateZ(float angle)
 
 // MatrixIdentity()
 Matrix MatrixRotateXYZ(Vector3 ang)
+{
+    Matrix result = { 1.0f, 0.0f, 0.0f, 0.0f,
+                      0.0f, 1.0f, 0.0f, 0.0f,
+                      0.0f, 0.0f, 1.0f, 0.0f,
+                      0.0f, 0.0f, 0.0f, 1.0f }; // MatrixIdentity()
 
+    float cosz = cosf(-ang.z);
+    float sinz = sinf(-ang.z);
+    float cosy = cosf(-ang.y);
+    float siny = sinf(-ang.y);
+    float cosx = cosf(-ang.x);
+    float sinx = sinf(-ang.x);
+
+    result.m0 = cosz * cosy;
+    result.m4 = cosz * siny * sinx - sinz * cosx;
+    result.m8 = cosz * siny * cosx + sinz * sinx;
+
+    result.m1 = sinz * cosy;
+    result.m5 = sinz * siny * sinx + cosz * cosx;
+    result.m9 = sinz * siny * cosx - cosz * sinx;
+
+    result.m2 = -siny;
+    result.m6 = cosy * sinx;
+    result.m10= cosy * cosx;
+
+    return result;
+}
 // Get zyx-rotation matrix (angles in radians)
 Matrix MatrixRotateZYX(Vector3 ang)
 
