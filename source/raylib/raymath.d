@@ -1291,7 +1291,35 @@ Matrix MatrixFrustum(
     double top,
     double near,
     double far)
+{
+    auto result = Matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
+    float rl = cast(float)(right - left);
+    float tb = cast(float)(top - bottom);
+    float fn = cast(float)(far - near);
+
+    result.m0 = cast(float)near * 2.0f / rl;
+    result.m1 = 0.0f;
+    result.m2 = 0.0f;
+    result.m3 = 0.0f;
+
+    result.m4 = 0.0f;
+    result.m5 = cast(float)near * 2.0f / tb;
+    result.m6 = 0.0f;
+    result.m7 = 0.0f;
+
+    result.m8 = (cast(float)right + cast(float)left) / rl;
+    result.m9 = (cast(float)top + cast(float)bottom) / tb;
+    result.m10 = -(cast(float)far + cast(float)near) / fn;
+    result.m11 = -1.0f;
+
+    result.m12 = 0.0f;
+    result.m13 = 0.0f;
+    result.m14 = -(cast(float)far * cast(float)near * 2.0f) / fn;
+    result.m15 = 0.0f;
+
+    return result;
+}
 // Get perspective projection matrix
 // NOTE: Angle should be provided in radians
 
