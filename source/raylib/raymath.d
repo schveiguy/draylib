@@ -517,6 +517,11 @@ float Vector3LengthSqr(const Vector3 v)
 
 // Calculate two vectors dot product
 float Vector3DotProduct(Vector3 v1, Vector3 v2)
+{
+    float result = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+
+    return result;
+}
 
 // Calculate distance between two vectors
 float Vector3Distance(Vector3 v1, Vector3 v2)
