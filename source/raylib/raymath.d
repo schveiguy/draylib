@@ -431,7 +431,11 @@ Vector3 Vector3AddValue(Vector3 v, float add)
 
 // Subtract two vectors
 Vector3 Vector3Subtract(Vector3 v1, Vector3 v2)
+{
+    Vector3 result = { v1.x - v2.x, v1.y - v2.y, v1.z - v2.z };
 
+    return result;
+}
 
 // Subtract vector by float value
 Vector3 Vector3SubtractValue(Vector3 v, float sub)
