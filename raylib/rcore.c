@@ -4596,7 +4596,6 @@ void SetupViewport(int width, int height)
 
     CORE.Time.previous = GetTime();     // Get time as double
 }
-#endif
 
 // Wait for some milliseconds (stop program execution)
 // NOTE: Sleep() granularity could be around 10 ms, it means, Sleep() could
@@ -4974,6 +4973,7 @@ void PollInputEvents(void)
     // NOTE: Gamepad (Joystick) input events polling is done asynchonously in another pthread - GamepadThread()
 #endif
 }
+#endif
 
 #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
 #if 0 // in D
@@ -5052,19 +5052,15 @@ void WindowSizeCallback(GLFWwindow *window, int width, int height)
 
     // NOTE: Postprocessing texture is not scaled to new size
 }
-#endif
 
 // GLFW3 WindowIconify Callback, runs when window is minimized/restored
-#if 0 // in D
 static void WindowIconifyCallback(GLFWwindow *window, int iconified)
 {
     if (iconified) CORE.Window.flags |= FLAG_WINDOW_MINIMIZED;  // The window was iconified
     else CORE.Window.flags &= ~FLAG_WINDOW_MINIMIZED;           // The window was restored
 }
-#endif
 
 #if !defined(PLATFORM_WEB)
-#if 0 // in D
 // GLFW3 WindowMaximize Callback, runs when window is maximized/restored
 void WindowMaximizeCallback(GLFWwindow *window, int maximized)
 {
@@ -5072,9 +5068,7 @@ void WindowMaximizeCallback(GLFWwindow *window, int maximized)
     else CORE.Window.flags &= ~FLAG_WINDOW_MAXIMIZED;           // The window was restored
 }
 #endif
-#endif
 
-#if 0 // in D
 // GLFW3 WindowFocus Callback, runs when window get/lose focus
 static void WindowFocusCallback(GLFWwindow *window, int focused)
 {
@@ -5260,9 +5254,7 @@ static void CursorEnterCallback(GLFWwindow *window, int enter)
     if (enter == true) CORE.Input.Mouse.cursorOnScreen = true;
     else CORE.Input.Mouse.cursorOnScreen = false;
 }
-#endif
 
-#if 0 // in D
 // GLFW3 Window Drop Callback, runs when drop files into window
 // NOTE: Paths are stored in dynamic memory for further retrieval
 // Everytime new files are dropped, old ones are discarded

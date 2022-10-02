@@ -171,8 +171,8 @@ private struct CoreData {
         }
         struct _Keyboard {
             int exitKey;                    // Default exit key
-            char[MAX_KEYBOARD_KEYS] currentKeyState = 0;        // Registers current frame key state
-            char[MAX_KEYBOARD_KEYS] previousKeyState = 0;       // Registers previous frame key state
+            ubyte[MAX_KEYBOARD_KEYS] currentKeyState = 0;        // Registers current frame key state
+            ubyte[MAX_KEYBOARD_KEYS] previousKeyState = 0;       // Registers previous frame key state
 
             int[MAX_KEY_PRESSED_QUEUE] keyPressedQueue;     // Input keys queue
             int keyPressedQueueCount;       // Input keys queue count
@@ -200,8 +200,8 @@ private struct CoreData {
             bool cursorHidden;              // Track if cursor is hidden
             bool cursorOnScreen;            // Tracks if cursor is inside client area
 
-            char[MAX_MOUSE_BUTTONS] currentButtonState = 0;     // Registers current mouse button state
-            char[MAX_MOUSE_BUTTONS] previousButtonState = 0;    // Registers previous mouse button state
+            ubyte[MAX_MOUSE_BUTTONS] currentButtonState = 0;     // Registers current mouse button state
+            ubyte[MAX_MOUSE_BUTTONS] previousButtonState = 0;    // Registers previous mouse button state
             float currentWheelMove = 0;         // Registers current mouse wheel variation
             float previousWheelMove = 0;        // Registers previous mouse wheel variation
             version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
@@ -221,8 +221,8 @@ private struct CoreData {
             int axisCount;                  // Register number of available gamepad axis
             bool[MAX_GAMEPADS] ready;       // Flag to know if gamepad is ready
             char[64][MAX_GAMEPADS] name = [0];    // Gamepad name holder
-            char[MAX_GAMEPAD_BUTTONS][MAX_GAMEPADS] currentButtonState = [0];     // Current gamepad buttons state
-            char[MAX_GAMEPAD_BUTTONS][MAX_GAMEPADS] previousButtonState = [0];    // Previous gamepad buttons state
+            ubyte[MAX_GAMEPAD_BUTTONS][MAX_GAMEPADS] currentButtonState = [0];     // Current gamepad buttons state
+            ubyte[MAX_GAMEPAD_BUTTONS][MAX_GAMEPADS] previousButtonState = [0];    // Previous gamepad buttons state
             float[MAX_GAMEPAD_AXIS][MAX_GAMEPADS] axisState = [0];                // Gamepad axis state
             version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
                 pthread_t threadId;             // Gamepad reading thread id
@@ -4465,4 +4465,379 @@ int GetTouchPointId(int index)
 int GetTouchPointCount()
 {
     return CORE.Input.Touch.pointCount;
+}
+
+/// Wait for some milliseconds (stop program execution)
+/// NOTE: Sleep() granularity could be around 10 ms, it means, Sleep() could
+/// take longer than expected... for that reason we use the busy wait loop
+/// Ref: http://stackoverflow.com/questions/43057578/c-programming-win32-games-sleep-taking-longer-than-expected
+/// Ref: http://www.geisswerks.com/ryan/FAQS/timing.html --> All about timming on Win32!
+void WaitTime(float ms)
+{
+    version(none) { // #if defined(SUPPORT_BUSY_WAIT_LOOP)
+        double previousTime = GetTime();
+        double currentTime = 0.0;
+
+        // Busy wait loop
+        while ((currentTime - previousTime) < ms/1000.0f) currentTime = GetTime();
+    } else {
+        version(all) { //  #if defined(SUPPORT_PARTIALBUSY_WAIT_LOOP)
+            double busyWait = ms*0.05;     // NOTE: We are using a busy wait of 5% of the time
+            ms -= busyWait;
+        }
+
+        // System halt functions
+        version(Windows){
+            Sleep(cast(uint)ms);
+        } else version(OSX) {
+            usleep(cast(int)(ms*1000.0f));
+        } else version(Posix) { // #if defined(__linux__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__)
+            timespec req;
+            time_t sec = cast(int)(ms/1000.0f);
+            ms -= (sec*1000);
+            req.tv_sec = sec;
+            req.tv_nsec = cast(int)(ms*1000000L);
+
+            // NOTE: Use nanosleep() on Unix platforms... usleep() it's deprecated.
+            while (nanosleep(&req, &req) == -1) continue;
+        }
+
+        version(all) { // #if defined(SUPPORT_PARTIALBUSY_WAIT_LOOP)
+            double previousTime = GetTime();
+            double currentTime = 0.0;
+
+            // Partial busy wait loop (only a fraction of the total wait time)
+            while ((currentTime - previousTime) < busyWait/1000.0f) currentTime = GetTime();
+        }
+    }
+}
+
+/// Swap back buffer with front buffer (screen drawing)
+void SwapScreenBuffer()
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+        glfwSwapBuffers(CORE.Window.handle);
+    }
+
+    version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        eglSwapBuffers(CORE.Window.device, CORE.Window.surface);
+
+        version(none) { // #if defined(PLATFORM_DRM)
+            if (!CORE.Window.gbmSurface || (-1 == CORE.Window.fd) || !CORE.Window.connector || !CORE.Window.crtc)
+            {
+                TraceLog(TraceLogLevel.TraceLogLevel.LOG_ERROR, "DISPLAY: DRM initialization failed to swap");
+                abort();
+            }
+
+            gbm_bo *bo = gbm_surface_lock_front_buffer(CORE.Window.gbmSurface);
+            if (!bo)
+            {
+                TraceLog(TraceLogLevel.LOG_ERROR, "DISPLAY: Failed GBM to lock front buffer");
+                abort();
+            }
+
+            uint fb = 0;
+            int result = drmModeAddFB(CORE.Window.fd, CORE.Window.connector.modes[CORE.Window.modeIndex].hdisplay,
+                                      CORE.Window.connector.modes[CORE.Window.modeIndex].vdisplay, 24, 32, gbm_bo_get_stride(bo), gbm_bo_get_handle(bo).u32, &fb);
+            if (0 != result)
+            {
+                TraceLog(TraceLogLevel.LOG_ERROR, "DISPLAY: drmModeAddFB() failed with result: %d", result);
+                abort();
+            }
+
+            result = drmModeSetCrtc(CORE.Window.fd, CORE.Window.crtc.crtc_id, fb, 0, 0,
+                                    &CORE.Window.connector.connector_id, 1, &CORE.Window.connector.modes[CORE.Window.modeIndex]);
+            if (0 != result)
+            {
+                TraceLog(TraceLogLevel.LOG_ERROR, "DISPLAY: drmModeSetCrtc() failed with result: %d", result);
+                abort();
+            }
+
+            if (CORE.Window.prevFB)
+            {
+                result = drmModeRmFB(CORE.Window.fd, CORE.Window.prevFB);
+                if (0 != result)
+                {
+                    TraceLog(TraceLogLevel.LOG_ERROR, "DISPLAY: drmModeRmFB() failed with result: %d", result);
+                    abort();
+                }
+            }
+            CORE.Window.prevFB = fb;
+
+            if (CORE.Window.prevBO)
+            {
+                gbm_surface_release_buffer(CORE.Window.gbmSurface, CORE.Window.prevBO);
+            }
+
+            CORE.Window.prevBO = bo;
+        } // PLATFORM_DRM
+    } // PLATFORM_ANDROID || PLATFORM_RPI || PLATFORM_DRM
+}
+
+/// Register all input events
+void PollInputEvents()
+{
+    version(all) { // #if defined(SUPPORT_GESTURES_SYSTEM)
+        // NOTE: Gestures update must be called every frame to reset gestures correctly
+        // because ProcessGestureEvent() is just called on an event, not every frame
+        UpdateGestures();
+    }
+
+    // Reset keys/chars pressed registered
+    CORE.Input.Keyboard.keyPressedQueueCount = 0;
+    CORE.Input.Keyboard.charPressedQueueCount = 0;
+
+    version(all) { // #if !(defined(PLATFORM_RPI) || defined(PLATFORM_DRM))
+                    // Reset last gamepad button/axis registered state
+        CORE.Input.Gamepad.lastButtonPressed = -1;
+        CORE.Input.Gamepad.axisCount = 0;
+    }
+
+    version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+                    // Register previous keys states
+        for (int i = 0; i < MAX_KEYBOARD_KEYS; i++) CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
+
+        PollKeyboardEvents();
+
+        // Register previous mouse states
+        CORE.Input.Mouse.previousWheelMove = CORE.Input.Mouse.currentWheelMove;
+        CORE.Input.Mouse.currentWheelMove = 0.0f;
+        for (int i = 0; i < MAX_MOUSE_BUTTONS; i++)
+        {
+            CORE.Input.Mouse.previousButtonState[i] = CORE.Input.Mouse.currentButtonState[i];
+            CORE.Input.Mouse.currentButtonState[i] = CORE.Input.Mouse.currentButtonStateEvdev[i];
+        }
+
+        // Register gamepads buttons events
+        for (int i = 0; i < MAX_GAMEPADS; i++)
+        {
+            if (CORE.Input.Gamepad.ready[i])
+            {
+                // Register previous gamepad states
+                for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
+            }
+        }
+    }
+
+    version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+        // Keyboard/Mouse input polling (automatically managed by GLFW3 through callback)
+
+        // Register previous keys states
+        for (int i = 0; i < MAX_KEYBOARD_KEYS; i++) CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
+
+        // Register previous mouse states
+        for (int i = 0; i < MAX_MOUSE_BUTTONS; i++) CORE.Input.Mouse.previousButtonState[i] = CORE.Input.Mouse.currentButtonState[i];
+
+        // Register previous mouse wheel state
+        CORE.Input.Mouse.previousWheelMove = CORE.Input.Mouse.currentWheelMove;
+        CORE.Input.Mouse.currentWheelMove = 0.0f;
+
+        // Register previous mouse position
+        CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
+    }
+
+    // Register previous touch states
+    for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
+    
+    // Reset touch positions
+    // TODO: It resets on PLATFORM_WEB the mouse position and not filled again until a move-event,
+    // so, if mouse is not moved it returns a (0, 0) position... this behaviour should be reviewed!
+    //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ 0, 0 };
+
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        // Check if gamepads are ready
+        // NOTE: We do it here in case of disconnection
+        for (int i = 0; i < MAX_GAMEPADS; i++)
+        {
+            if (glfwJoystickPresent(i)) CORE.Input.Gamepad.ready[i] = true;
+            else CORE.Input.Gamepad.ready[i] = false;
+        }
+
+        // Register gamepads buttons events
+        for (int i = 0; i < MAX_GAMEPADS; i++)
+        {
+            if (CORE.Input.Gamepad.ready[i])     // Check if gamepad is available
+            {
+                // Register previous gamepad states
+                for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
+
+                // Get current gamepad state
+                // NOTE: There is no callback available, so we get it manually
+                // Get remapped buttons
+                GLFWgamepadstate state = { 0 };
+                glfwGetGamepadState(i, &state); // This remapps all gamepads so they have their buttons mapped like an xbox controller
+
+                const ubyte *buttons = state.buttons.ptr;
+
+                for (int k = 0; (buttons != null) && (k < GLFW_GAMEPAD_BUTTON_DPAD_LEFT + 1) && (k < MAX_GAMEPAD_BUTTONS); k++)
+                {
+                    GamepadButton button = cast(GamepadButton)-1;
+
+                    with(GamepadButton) switch (k)
+                    {
+                    case GLFW_GAMEPAD_BUTTON_Y: button = GAMEPAD_BUTTON_RIGHT_FACE_UP; break;
+                    case GLFW_GAMEPAD_BUTTON_B: button = GAMEPAD_BUTTON_RIGHT_FACE_RIGHT; break;
+                    case GLFW_GAMEPAD_BUTTON_A: button = GAMEPAD_BUTTON_RIGHT_FACE_DOWN; break;
+                    case GLFW_GAMEPAD_BUTTON_X: button = GAMEPAD_BUTTON_RIGHT_FACE_LEFT; break;
+
+                    case GLFW_GAMEPAD_BUTTON_LEFT_BUMPER: button = GAMEPAD_BUTTON_LEFT_TRIGGER_1; break;
+                    case GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER: button = GAMEPAD_BUTTON_RIGHT_TRIGGER_1; break;
+
+                    case GLFW_GAMEPAD_BUTTON_BACK: button = GAMEPAD_BUTTON_MIDDLE_LEFT; break;
+                    case GLFW_GAMEPAD_BUTTON_GUIDE: button = GAMEPAD_BUTTON_MIDDLE; break;
+                    case GLFW_GAMEPAD_BUTTON_START: button = GAMEPAD_BUTTON_MIDDLE_RIGHT; break;
+
+                    case GLFW_GAMEPAD_BUTTON_DPAD_UP: button = GAMEPAD_BUTTON_LEFT_FACE_UP; break;
+                    case GLFW_GAMEPAD_BUTTON_DPAD_RIGHT: button = GAMEPAD_BUTTON_LEFT_FACE_RIGHT; break;
+                    case GLFW_GAMEPAD_BUTTON_DPAD_DOWN: button = GAMEPAD_BUTTON_LEFT_FACE_DOWN; break;
+                    case GLFW_GAMEPAD_BUTTON_DPAD_LEFT: button = GAMEPAD_BUTTON_LEFT_FACE_LEFT; break;
+
+                    case GLFW_GAMEPAD_BUTTON_LEFT_THUMB: button = GAMEPAD_BUTTON_LEFT_THUMB; break;
+                    case GLFW_GAMEPAD_BUTTON_RIGHT_THUMB: button = GAMEPAD_BUTTON_RIGHT_THUMB; break;
+                    default: break;
+                    }
+
+                    if (button != -1)   // Check for valid button
+                    {
+                        if (buttons[k] == GLFW_PRESS)
+                        {
+                            CORE.Input.Gamepad.currentButtonState[i][button] = 1;
+                            CORE.Input.Gamepad.lastButtonPressed = button;
+                        }
+                        else CORE.Input.Gamepad.currentButtonState[i][button] = 0;
+                    }
+                }
+
+                // Get current axis state
+                const float *axes = state.axes.ptr;
+
+                for (int k = 0; (axes != null) && (k < GLFW_GAMEPAD_AXIS_LAST + 1) && (k < MAX_GAMEPAD_AXIS); k++)
+                {
+                    CORE.Input.Gamepad.axisState[i][k] = axes[k];
+                }
+
+                // Register buttons for 2nd triggers (because GLFW doesn't count these as buttons but rather axis)
+                CORE.Input.Gamepad.currentButtonState[i][GamepadButton.GAMEPAD_BUTTON_LEFT_TRIGGER_2] = cast(char)(CORE.Input.Gamepad.axisState[i][GamepadAxis.GAMEPAD_AXIS_LEFT_TRIGGER] > 0.1);
+                CORE.Input.Gamepad.currentButtonState[i][GamepadButton.GAMEPAD_BUTTON_RIGHT_TRIGGER_2] = cast(char)(CORE.Input.Gamepad.axisState[i][GamepadAxis.GAMEPAD_AXIS_RIGHT_TRIGGER] > 0.1);
+
+                CORE.Input.Gamepad.axisCount = GLFW_GAMEPAD_AXIS_LAST + 1;
+            }
+        }
+
+        CORE.Window.resizedLastFrame = false;
+
+        version(none) { // #if defined(SUPPORT_EVENTS_WAITING)
+            glfwWaitEvents();
+        } else {
+            glfwPollEvents();       // Register keyboard/mouse events (callbacks)... and window events!
+        }
+    }  // PLATFORM_DESKTOP
+
+    version(none) { // #if defined(PLATFORM_WEB)
+        CORE.Window.resizedLastFrame = false;
+    }  // PLATFORM_WEB
+
+    // Gamepad support using emscripten API
+    // NOTE: GLFW3 joystick functionality not available in web
+    version(none) { // #if defined(PLATFORM_WEB)
+        // Get number of gamepads connected
+        int numGamepads = 0;
+        if (emscripten_sample_gamepad_data() == EMSCRIPTEN_RESULT_SUCCESS) numGamepads = emscripten_get_num_gamepads();
+
+        for (int i = 0; (i < numGamepads) && (i < MAX_GAMEPADS); i++)
+        {
+            // Register previous gamepad button states
+            for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
+
+            EmscriptenGamepadEvent gamepadState;
+
+            int result = emscripten_get_gamepad_status(i, &gamepadState);
+
+            if (result == EMSCRIPTEN_RESULT_SUCCESS)
+            {
+                // Register buttons data for every connected gamepad
+                for (int j = 0; (j < gamepadState.numButtons) && (j < MAX_GAMEPAD_BUTTONS); j++)
+                {
+                    GamepadButton button = -1;
+
+                    // Gamepad Buttons reference: https://www.w3.org/TR/gamepad/#gamepad-interface
+                    with(GamepadButton) switch (j)
+                    {
+                    case 0: button = GAMEPAD_BUTTON_RIGHT_FACE_DOWN; break;
+                    case 1: button = GAMEPAD_BUTTON_RIGHT_FACE_RIGHT; break;
+                    case 2: button = GAMEPAD_BUTTON_RIGHT_FACE_LEFT; break;
+                    case 3: button = GAMEPAD_BUTTON_RIGHT_FACE_UP; break;
+                    case 4: button = GAMEPAD_BUTTON_LEFT_TRIGGER_1; break;
+                    case 5: button = GAMEPAD_BUTTON_RIGHT_TRIGGER_1; break;
+                    case 6: button = GAMEPAD_BUTTON_LEFT_TRIGGER_2; break;
+                    case 7: button = GAMEPAD_BUTTON_RIGHT_TRIGGER_2; break;
+                    case 8: button = GAMEPAD_BUTTON_MIDDLE_LEFT; break;
+                    case 9: button = GAMEPAD_BUTTON_MIDDLE_RIGHT; break;
+                    case 10: button = GAMEPAD_BUTTON_LEFT_THUMB; break;
+                    case 11: button = GAMEPAD_BUTTON_RIGHT_THUMB; break;
+                    case 12: button = GAMEPAD_BUTTON_LEFT_FACE_UP; break;
+                    case 13: button = GAMEPAD_BUTTON_LEFT_FACE_DOWN; break;
+                    case 14: button = GAMEPAD_BUTTON_LEFT_FACE_LEFT; break;
+                    case 15: button = GAMEPAD_BUTTON_LEFT_FACE_RIGHT; break;
+                    default: break;
+                    }
+
+                    if (button != -1)   // Check for valid button
+                    {
+                        if (gamepadState.digitalButton[j] == 1)
+                        {
+                            CORE.Input.Gamepad.currentButtonState[i][button] = 1;
+                            CORE.Input.Gamepad.lastButtonPressed = button;
+                        }
+                        else CORE.Input.Gamepad.currentButtonState[i][button] = 0;
+                    }
+
+                    //TRACELOGD("INPUT: Gamepad %d, button %d: Digital: %d, Analog: %g", gamepadState.index, j, gamepadState.digitalButton[j], gamepadState.analogButton[j]);
+                }
+
+                // Register axis data for every connected gamepad
+                for (int j = 0; (j < gamepadState.numAxes) && (j < MAX_GAMEPAD_AXIS); j++)
+                {
+                    CORE.Input.Gamepad.axisState[i][j] = gamepadState.axis[j];
+                }
+
+                CORE.Input.Gamepad.axisCount = gamepadState.numAxes;
+            }
+        }
+    }
+
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        // Register previous keys states
+        // NOTE: Android supports up to 260 keys
+        for (int i = 0; i < 260; i++) CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
+
+        // Android ALooper_pollAll() variables
+        int pollResult = 0;
+        int pollEvents = 0;
+
+        // Poll Events (registered events)
+        // NOTE: Activity is paused if not enabled (CORE.Android.appEnabled)
+        while ((pollResult = ALooper_pollAll(CORE.Android.appEnabled? 0 : -1, null, &pollEvents, cast(void**)&CORE.Android.source)) >= 0)
+        {
+            // Process this event
+            if (CORE.Android.source != null) CORE.Android.source.process(CORE.Android.app, CORE.Android.source);
+
+            // NOTE: Never close window, native activity is controlled by the system!
+            if (CORE.Android.app.destroyRequested != 0)
+            {
+                //CORE.Window.shouldClose = true;
+                //ANativeActivity_finish(CORE.Android.app.activity);
+            }
+        }
+    }
+
+    version(none) {  // #if (defined(PLATFORM_RPI) || defined(PLATFORM_DRM)) && defined(SUPPORT_SSH_KEYBOARD_RPI)
+        // NOTE: Keyboard reading could be done using input_event(s) or just read from stdin, both methods are used here.
+        // stdin reading is still used for legacy purposes, it allows keyboard input trough SSH console
+
+        if (!CORE.Input.Keyboard.evtMode) ProcessKeyboard();
+
+        // NOTE: Mouse input events polling is done asynchronously in another pthread - EventThread()
+        // NOTE: Gamepad (Joystick) input events polling is done asynchonously in another pthread - GamepadThread()
+    }
 }
