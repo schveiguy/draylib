@@ -723,7 +723,34 @@ Vector3 Vector3Max(Vector3 v1, Vector3 v2)
 // Vector3DotProduct(v2, v0)
 // Vector3DotProduct(v2, v1)
 Vector3 Vector3Barycenter(Vector3 p, Vector3 a, Vector3 b, Vector3 c)
+{
+    auto result = Vector3(0, 0, 0);
 
+    Vector3 v0 = { b.x - a.x, b.y - a.y, b.z - a.z };
+    // Vector3Subtract(b, a)
+    Vector3 v1 = { c.x - a.x, c.y - a.y, c.z - a.z };
+    // Vector3Subtract(c, a)
+    Vector3 v2 = { p.x - a.x, p.y - a.y, p.z - a.z };
+    // Vector3Subtract(p, a)
+    float d00 = (v0.x * v0.x + v0.y * v0.y + v0.z * v0.z);
+    // Vector3DotProduct(v0, v0)
+    float d01 = (v0.x * v1.x + v0.y * v1.y + v0.z * v1.z);
+    // Vector3DotProduct(v0, v1)
+    float d11 = (v1.x * v1.x + v1.y * v1.y + v1.z * v1.z);
+    // Vector3DotProduct(v1, v1)
+    float d20 = (v2.x * v0.x + v2.y * v0.y + v2.z * v0.z);
+    // Vector3DotProduct(v2, v0)
+    float d21 = (v2.x * v1.x + v2.y * v1.y + v2.z * v1.z);
+    // Vector3DotProduct(v2, v1)
+
+    float denom = d00 * d11 - d01 * d01;
+
+    result.y = (d11 * d20 - d01 * d21) / denom;
+    result.z = (d00 * d21 - d01 * d20) / denom;
+    result.x = 1.0f - (result.z + result.y);
+
+    return result;
+}
 // Projects a Vector3 from screen space into object space
 // NOTE: We are avoiding calling other raymath functions despite available
 
