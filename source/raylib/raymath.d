@@ -1152,7 +1152,22 @@ Matrix MatrixRotate(Vector3 axis, float angle)
 
 // MatrixIdentity()
 Matrix MatrixRotateX(float angle)
+{
+    Matrix result = { 1.0f, 0.0f, 0.0f, 0.0f,
+                      0.0f, 1.0f, 0.0f, 0.0f,
+                      0.0f, 0.0f, 1.0f, 0.0f,
+                      0.0f, 0.0f, 0.0f, 1.0f }; // MatrixIdentity()
 
+    float cosres = cosf(angle);
+    float sinres = sinf(angle);
+
+    result.m5 = cosres;
+    result.m6 = -sinres;
+    result.m9 = sinres;
+    result.m10 = cosres;
+
+    return result;
+}
 // Get y-rotation matrix (angle in radians)
 
 // MatrixIdentity()
