@@ -1590,7 +1590,11 @@ Quaternion QuaternionScale(Quaternion q, float mul)
 }
 // Divide two quaternions
 Quaternion QuaternionDivide(Quaternion q1, Quaternion q2)
+{
+    Quaternion result = { q1.x / q2.x, q1.y / q2.y, q1.z / q2.z, q1.w / q2.w };
 
+    return result;
+}
 // Calculate linear interpolation between two quaternions
 Quaternion QuaternionLerp(Quaternion q1, Quaternion q2, float amount)
 
