@@ -398,7 +398,7 @@ Vector2 Vector2MoveTowards(Vector2 v, Vector2 target, float maxDistance)
 //----------------------------------------------------------------------------------
 
 // Vector with components value 0.0f
-Vector3 Vector3Zero ()
+Vector3 Vector3Zero()
 {
     Vector3 result = { 0.0f, 0.0f, 0.0f };
 
@@ -406,7 +406,12 @@ Vector3 Vector3Zero ()
 }
 
 // Vector with components value 1.0f
-Vector3 Vector3One();
+Vector3 Vector3One()
+{
+    Vector3 result = { 1.0f, 1.0f, 1.0f };
+
+    return result;
+}
 
 // Add two vectors
 Vector3 Vector3Add (Vector3 v1, Vector3 v2);
