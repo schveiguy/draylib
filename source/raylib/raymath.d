@@ -1836,7 +1836,40 @@ Quaternion QuaternionFromAxisAngle(Vector3 axis, float angle)
 // This occurs when the angle is zero.
 // Not a problem: just set an arbitrary normalized axis.
 void QuaternionToAxisAngle(Quaternion q, Vector3* outAxis, float* outAngle)
+{
+    if (fabs(q.w) > 1.0f)
+    {
+        // QuaternionNormalize(q);
+        float length = sqrtf(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+        if (length == 0.0f) length = 1.0f;
+        float ilength = 1.0f / length;
 
+        q.x = q.x * ilength;
+        q.y = q.y * ilength;
+        q.z = q.z * ilength;
+        q.w = q.w * ilength;
+    }
+
+    Vector3 resAxis = { 0.0f, 0.0f, 0.0f };
+    float resAngle = 2.0f * acosf(q.w);
+    float den = sqrtf(1.0f - q.w * q.w);
+
+    if (den > 0.0001f)
+    {
+        resAxis.x = q.x / den;
+        resAxis.y = q.y / den;
+        resAxis.z = q.z / den;
+    }
+    else
+    {
+        // This occurs when the angle is zero.
+        // Not a problem: just set an arbitrary normalized axis.
+        resAxis.x = 1.0f;
+    }
+
+    *outAxis = resAxis;
+    *outAngle = resAngle;
+}
 // Get the quaternion equivalent to Euler angles
 // NOTE: Rotation order is ZYX
 Quaternion QuaternionFromEuler(float pitch, float yaw, float roll)
