@@ -364,7 +364,15 @@ Vector2 Vector2Reflect (Vector2 v, Vector2 normal)
 }
 
 // Rotate vector by angle
-Vector2 Vector2Rotate (Vector2 v, float angle);
+Vector2 Vector2Rotate (Vector2 v, float angle)
+{
+    auto result = Vector2(0, 0);
+
+    result.x = v.x * cosf(angle) - v.y * sinf(angle);
+    result.y = v.x * sinf(angle) + v.y * cosf(angle);
+
+    return result;
+}
 
 // Move Vector towards target
 Vector2 Vector2MoveTowards (Vector2 v, Vector2 target, float maxDistance);
