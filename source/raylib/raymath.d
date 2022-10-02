@@ -541,7 +541,18 @@ float Vector3Distance(Vector3 v1, Vector3 v2)
 // Angle in XZ
 // Angle in XY
 Vector2 Vector3Angle(Vector3 v1, Vector3 v2)
+{
+    auto result = Vector2(0, 0);
 
+    float dx = v2.x - v1.x;
+    float dy = v2.y - v1.y;
+    float dz = v2.z - v1.z;
+
+    result.x = atan2f(dx, dz);                      // Angle in XZ
+    result.y = atan2f(dy, sqrtf(dx * dx + dz * dz));// Angle in XY
+
+    return result;
+}
 // Negate provided vector (invert direction)
 Vector3 Vector3Negate(Vector3 v)
 
