@@ -889,7 +889,11 @@ float MatrixDeterminant(Matrix mat)
 }
 // Get the trace of the matrix (sum of the values along the diagonal)
 float MatrixTrace(Matrix mat)
+{
+    float result = mat.m0 + mat.m5 + mat.m10 + mat.m15;
 
+    return result;
+}
 // Transposes provided matrix
 Matrix MatrixTranspose(Matrix mat)
 
