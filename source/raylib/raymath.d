@@ -690,6 +690,15 @@ Vector3 Vector3Reflect(Vector3 v, Vector3 normal)
 
 // Get min value for each pair of components
 Vector3 Vector3Min(Vector3 v1, Vector3 v2)
+{
+    auto result = Vector3(0, 0, 0);
+
+    result.x = fminf(v1.x, v2.x);
+    result.y = fminf(v1.y, v2.y);
+    result.z = fminf(v1.z, v2.z);
+
+    return result;
+}
 
 // Get max value for each pair of components
 Vector3 Vector3Max(Vector3 v1, Vector3 v2)
