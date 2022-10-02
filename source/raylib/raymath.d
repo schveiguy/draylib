@@ -501,6 +501,11 @@ Vector3 Vector3Perpendicular(Vector3 v)
 
 // Calculate vector length
 float Vector3Length(const Vector3 v)
+{
+    float result = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+
+    return result;
+}
 
 // Calculate vector square length
 float Vector3LengthSqr(const Vector3 v)
