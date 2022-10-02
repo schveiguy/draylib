@@ -1357,7 +1357,32 @@ Matrix MatrixOrtho(
     double top,
     double near,
     double far)
+{
+    auto result = Matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
+    float rl = cast(float)(right - left);
+    float tb = cast(float)(top - bottom);
+    float fn = cast(float)(far - near);
+
+    result.m0 = 2.0f / rl;
+    result.m1 = 0.0f;
+    result.m2 = 0.0f;
+    result.m3 = 0.0f;
+    result.m4 = 0.0f;
+    result.m5 = 2.0f / tb;
+    result.m6 = 0.0f;
+    result.m7 = 0.0f;
+    result.m8 = 0.0f;
+    result.m9 = 0.0f;
+    result.m10 = -2.0f / fn;
+    result.m11 = 0.0f;
+    result.m12 = -(cast(float)left + cast(float)right) / rl;
+    result.m13 = -(cast(float)top + cast(float)bottom) / tb;
+    result.m14 = -(cast(float)far + cast(float)near) / fn;
+    result.m15 = 1.0f;
+
+    return result;
+}
 // Get camera look-at matrix (view matrix)
 
 // Vector3Subtract(eye, target)
