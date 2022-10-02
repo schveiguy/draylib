@@ -1504,7 +1504,11 @@ Quaternion QuaternionSubtract(Quaternion q1, Quaternion q2)
 }
 // Subtract quaternion and float value
 Quaternion QuaternionSubtractValue(Quaternion q, float sub)
+{
+    Quaternion result = {q.x - sub, q.y - sub, q.z - sub, q.w - sub};
 
+    return result;
+}
 // Get identity quaternion
 Quaternion QuaternionIdentity()
 
