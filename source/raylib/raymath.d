@@ -249,7 +249,7 @@ Vector2 Vector2SubtractValue (Vector2 v, float sub)
 }
 
 // Calculate vector length
-float Vector2Length (Vector2 v);
+float Vector2Length (Vector2 v)
 {
     float result = sqrtf(v.x * v.x + v.y * v.y);
 
@@ -325,7 +325,7 @@ Vector2 Vector2Divide (Vector2 v1, Vector2 v2)
 // Normalize provided vector
 Vector2 Vector2Normalize (Vector2 v)
 {
-    Vector2 result = { 0 };
+    auto result = Vector2(0, 0);
     float length = sqrtf(v.x * v.x + v.y * v.y);
 
     if (length > 0)
