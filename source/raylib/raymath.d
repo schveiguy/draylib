@@ -1787,7 +1787,48 @@ Matrix QuaternionToMatrix(Quaternion q)
 
 // QuaternionNormalize(q);
 Quaternion QuaternionFromAxisAngle(Vector3 axis, float angle)
+{
+    Quaternion result = { 0.0f, 0.0f, 0.0f, 1.0f };
 
+    float axisLength = sqrtf(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
+
+    if (axisLength != 0.0f)
+    {
+        angle *= 0.5f;
+
+        float length = 0.0f;
+        float ilength = 0.0f;
+
+        // Vector3Normalize(axis)
+        Vector3 v = axis;
+        length = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+        if (length == 0.0f) length = 1.0f;
+        ilength = 1.0f / length;
+        axis.x *= ilength;
+        axis.y *= ilength;
+        axis.z *= ilength;
+
+        float sinres = sinf(angle);
+        float cosres = cosf(angle);
+
+        result.x = axis.x * sinres;
+        result.y = axis.y * sinres;
+        result.z = axis.z * sinres;
+        result.w = cosres;
+
+        // QuaternionNormalize(q);
+        Quaternion q = result;
+        length = sqrtf(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+        if (length == 0.0f) length = 1.0f;
+        ilength = 1.0f / length;
+        result.x = q.x * ilength;
+        result.y = q.y * ilength;
+        result.z = q.z * ilength;
+        result.w = q.w * ilength;
+    }
+
+    return result;
+}
 // Get the rotation angle and axis for a given quaternion
 
 // QuaternionNormalize(q);
