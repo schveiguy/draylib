@@ -1873,7 +1873,23 @@ void QuaternionToAxisAngle(Quaternion q, Vector3* outAxis, float* outAngle)
 // Get the quaternion equivalent to Euler angles
 // NOTE: Rotation order is ZYX
 Quaternion QuaternionFromEuler(float pitch, float yaw, float roll)
+{
+    auto result = Vector4(0, 0, 0, 0);
 
+    float x0 = cosf(pitch * 0.5f);
+    float x1 = sinf(pitch * 0.5f);
+    float y0 = cosf(yaw * 0.5f);
+    float y1 = sinf(yaw * 0.5f);
+    float z0 = cosf(roll * 0.5f);
+    float z1 = sinf(roll * 0.5f);
+
+    result.x = x1 * y0 * z0 - x0 * y1 * z1;
+    result.y = x0 * y1 * z0 + x1 * y0 * z1;
+    result.z = x0 * y0 * z1 - x1 * y1 * z0;
+    result.w = x0 * y0 * z0 + x1 * y1 * z1;
+
+    return result;
+}
 // Get the Euler angles equivalent to quaternion (roll, pitch, yaw)
 // NOTE: Angles are returned in a Vector3 struct in radians
 
