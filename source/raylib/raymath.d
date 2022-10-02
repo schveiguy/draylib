@@ -1275,7 +1275,14 @@ Matrix MatrixRotateZYX(Vector3 ang)
 }
 // Get scaling matrix
 Matrix MatrixScale(float x, float y, float z)
+{
+    Matrix result = { x, 0.0f, 0.0f, 0.0f,
+                      0.0f, y, 0.0f, 0.0f,
+                      0.0f, 0.0f, z, 0.0f,
+                      0.0f, 0.0f, 0.0f, 1.0f };
 
+    return result;
+}
 // Get perspective projection matrix
 Matrix MatrixFrustum(
     double left,
