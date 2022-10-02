@@ -472,6 +472,32 @@ Vector3 Vector3CrossProduct(Vector3 v1, Vector3 v2)
 
 // Cross product between vectors
 Vector3 Vector3Perpendicular(Vector3 v)
+{
+    auto result = Vector3(0, 0, 0);
+
+    float min = cast(float)fabs(v.x);
+    Vector3 cardinalAxis = {1.0f, 0.0f, 0.0f};
+
+    if (fabs(v.y) < min)
+    {
+        min = cast(float)fabs(v.y);
+        Vector3 tmp = {0.0f, 1.0f, 0.0f};
+        cardinalAxis = tmp;
+    }
+
+    if (fabs(v.z) < min)
+    {
+        Vector3 tmp = {0.0f, 0.0f, 1.0f};
+        cardinalAxis = tmp;
+    }
+
+    // Cross product between vectors
+    result.x = v.y * cardinalAxis.z - v.z * cardinalAxis.y;
+    result.y = v.z * cardinalAxis.x - v.x * cardinalAxis.z;
+    result.z = v.x * cardinalAxis.y - v.y * cardinalAxis.x;
+
+    return result;
+}
 
 // Calculate vector length
 float Vector3Length(const Vector3 v)
