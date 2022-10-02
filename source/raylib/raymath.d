@@ -422,7 +422,12 @@ Vector3 Vector3Add(Vector3 v1, Vector3 v2)
 }
 
 // Add vector and float value
-Vector3 Vector3AddValue (Vector3 v, float add);
+Vector3 Vector3AddValue (Vector3 v, float add)
+{
+    Vector3 result = { v.x + add, v.y + add, v.z + add };
+
+    return result;
+}
 
 // Subtract two vectors
 Vector3 Vector3Subtract (Vector3 v1, Vector3 v2);
