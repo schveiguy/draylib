@@ -571,7 +571,19 @@ Vector3 Vector3Divide(Vector3 v1, Vector3 v2)
 
 // Normalize provided vector
 Vector3 Vector3Normalize(Vector3 v)
+{
+    Vector3 result = v;
 
+    float length = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (length == 0.0f) length = 1.0f;
+    float ilength = 1.0f / length;
+
+    result.x *= ilength;
+    result.y *= ilength;
+    result.z *= ilength;
+
+    return result;
+}
 // Orthonormalize provided vectors
 // Makes vectors normalized and orthogonal to each other
 // Gram-Schmidt function implementation
