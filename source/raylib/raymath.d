@@ -629,6 +629,19 @@ void Vector3OrthoNormalize(Vector3* v1, Vector3* v2)
 
 // Transforms a Vector3 by a given Matrix
 Vector3 Vector3Transform(Vector3 v, Matrix mat)
+{
+    auto result = Vector3(0, 0, 0);
+
+    float x = v.x;
+    float y = v.y;
+    float z = v.z;
+
+    result.x = mat.m0 * x + mat.m4 * y + mat.m8 * z + mat.m12;
+    result.y = mat.m1 * x + mat.m5 * y + mat.m9 * z + mat.m13;
+    result.z = mat.m2 * x + mat.m6 * y + mat.m10 * z + mat.m14;
+
+    return result;
+}
 
 // Transform a vector by quaternion rotation
 Vector3 Vector3RotateByQuaternion(Vector3 v, Quaternion q)
