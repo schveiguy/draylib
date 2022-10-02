@@ -702,7 +702,15 @@ Vector3 Vector3Min(Vector3 v1, Vector3 v2)
 
 // Get max value for each pair of components
 Vector3 Vector3Max(Vector3 v1, Vector3 v2)
+{
+    auto result = Vector3(0, 0, 0);
 
+    result.x = fmaxf(v1.x, v2.x);
+    result.y = fmaxf(v1.y, v2.y);
+    result.z = fmaxf(v1.z, v2.z);
+
+    return result;
+}
 // Compute barycenter coordinates (u, v, w) for point p with respect to triangle (a, b, c)
 // NOTE: Assumes P is on the plane of the triangle
 
