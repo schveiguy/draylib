@@ -596,6 +596,36 @@ Vector3 Vector3Normalize(Vector3 v)
 
 // Vector3CrossProduct(vn1, *v1)
 void Vector3OrthoNormalize(Vector3* v1, Vector3* v2)
+{
+    float length = 0.0f;
+    float ilength = 0.0f;
+
+    // Vector3Normalize(*v1);
+    Vector3 v = *v1;
+    length = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (length == 0.0f) length = 1.0f;
+    ilength = 1.0f/length;
+    v1->x *= ilength;
+    v1->y *= ilength;
+    v1->z *= ilength;
+
+    // Vector3CrossProduct(*v1, *v2)
+    Vector3 vn1 = { v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x };
+
+    // Vector3Normalize(vn1);
+    v = vn1;
+    length = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (length == 0.0f) length = 1.0f;
+    ilength = 1.0f / length;
+    vn1.x *= ilength;
+    vn1.y *= ilength;
+    vn1.z *= ilength;
+
+    // Vector3CrossProduct(vn1, *v1)
+    Vector3 vn2 = { vn1.y * v1.z - vn1.z * v1.y, vn1.z * v1.x - vn1.x * v1.z, vn1.x * v1.y - vn1.y * v1.x };
+
+    *v2 = vn2;
+}
 
 // Transforms a Vector3 by a given Matrix
 Vector3 Vector3Transform(Vector3 v, Matrix mat)
