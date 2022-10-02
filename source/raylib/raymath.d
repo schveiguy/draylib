@@ -1561,7 +1561,19 @@ Quaternion QuaternionInvert(Quaternion q)
 }
 // Calculate two quaternion multiplication
 Quaternion QuaternionMultiply(Quaternion q1, Quaternion q2)
+{
+    auto result = Vector4(0, 0, 0, 0);
 
+    float qax = q1.x, qay = q1.y, qaz = q1.z, qaw = q1.w;
+    float qbx = q2.x, qby = q2.y, qbz = q2.z, qbw = q2.w;
+
+    result.x = qax * qbw + qaw * qbx + qay * qbz - qaz * qby;
+    result.y = qay * qbw + qaw * qby + qaz * qbx - qax * qbz;
+    result.z = qaz * qbw + qaw * qbz + qax * qby - qay * qbx;
+    result.w = qaw * qbw - qax * qbx - qay * qby - qaz * qbz;
+
+    return result;
+}
 // Scale quaternion by float value
 Quaternion QuaternionScale(Quaternion q, float mul)
 
