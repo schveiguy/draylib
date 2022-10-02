@@ -1096,7 +1096,14 @@ Matrix MatrixMultiply(Matrix left, Matrix right)
 }
 // Get translation matrix
 Matrix MatrixTranslate(float x, float y, float z)
+{
+    Matrix result = { 1.0f, 0.0f, 0.0f, x,
+                      0.0f, 1.0f, 0.0f, y,
+                      0.0f, 0.0f, 1.0f, z,
+                      0.0f, 0.0f, 0.0f, 1.0f };
 
+    return result;
+}
 // Create rotation matrix from axis and angle
 // NOTE: Angle should be provided in radians
 Matrix MatrixRotate(Vector3 axis, float angle)
