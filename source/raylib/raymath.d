@@ -1511,7 +1511,11 @@ Quaternion QuaternionSubtractValue(Quaternion q, float sub)
 }
 // Get identity quaternion
 Quaternion QuaternionIdentity()
+{
+    Quaternion result = { 0.0f, 0.0f, 0.0f, 1.0f };
 
+    return result;
+}
 // Computes the length of a quaternion
 float QuaternionLength(Quaternion q)
 
