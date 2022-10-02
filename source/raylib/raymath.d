@@ -1241,7 +1241,38 @@ Matrix MatrixRotateXYZ(Vector3 ang)
 }
 // Get zyx-rotation matrix (angles in radians)
 Matrix MatrixRotateZYX(Vector3 ang)
+{
+    auto result = Matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
+    float cz = cosf(ang.z);
+    float sz = sinf(ang.z);
+    float cy = cosf(ang.y);
+    float sy = sinf(ang.y);
+    float cx = cosf(ang.x);
+    float sx = sinf(ang.x);
+
+    result.m0 = cz * cy;
+    result.m1 = cz * sy * sx - cx * sz;
+    result.m2 = sz * sx + cz * cx * sy;
+    result.m3 = 0;
+
+    result.m4 = cy * sz;
+    result.m5 = cz * cx + sz * sy * sx;
+    result.m6 = cx * sz * sy - cz * sx;
+    result.m7 = 0;
+
+    result.m8 = -sy;
+    result.m9 = cy * sx;
+    result.m10 = cy * cx;
+    result.m11 = 0;
+
+    result.m12 = 0;
+    result.m13 = 0;
+    result.m14 = 0;
+    result.m15 = 1;
+
+    return result;
+}
 // Get scaling matrix
 Matrix MatrixScale(float x, float y, float z)
 
