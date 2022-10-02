@@ -1325,7 +1325,30 @@ Matrix MatrixFrustum(
 
 // MatrixFrustum(-right, right, -top, top, near, far);
 Matrix MatrixPerspective(double fovy, double aspect, double near, double far)
+{
+    auto result = Matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
+
+    double top = near * tan(fovy * 0.5);
+    double bottom = -top;
+    double right = top * aspect;
+    double left = -right;
+
+    // MatrixFrustum(-right, right, -top, top, near, far);
+    float rl = cast(float)(right - left);
+    float tb = cast(float)(top - bottom);
+    float fn = cast(float)(far - near);
+
+    result.m0 = cast(float)near * 2.0f / rl;
+    result.m5 = cast(float)near * 2.0f / tb;
+    result.m8 = (cast(float)right + cast(float)left) / rl;
+    result.m9 = (cast(float)top + cast(float)bottom) / tb;
+    result.m10 = -(cast(float)far + cast(float)near) / fn;
+    result.m11 = -1.0f;
+    result.m14 = -(cast(float)far * cast(float)near * 2.0f) / fn;
+
+    return result;
+}
 // Get orthographic projection matrix
 Matrix MatrixOrtho(
     double left,
