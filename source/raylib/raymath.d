@@ -439,6 +439,11 @@ Vector3 Vector3Subtract(Vector3 v1, Vector3 v2)
 
 // Subtract vector by float value
 Vector3 Vector3SubtractValue(Vector3 v, float sub)
+{
+    Vector3 result = { v.x - sub, v.y - sub, v.z - sub };
+
+    return result;
+}
 
 // Multiply vector by scalar
 Vector3 Vector3Scale(Vector3 v, float scalar)
