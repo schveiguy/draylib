@@ -1518,7 +1518,11 @@ Quaternion QuaternionIdentity()
 }
 // Computes the length of a quaternion
 float QuaternionLength(Quaternion q)
+{
+    float result = sqrtf(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
 
+    return result;
+}
 // Normalize provided quaternion
 Quaternion QuaternionNormalize(Quaternion q)
 
