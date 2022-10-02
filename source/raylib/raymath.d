@@ -1637,7 +1637,47 @@ Quaternion QuaternionNlerp(Quaternion q1, Quaternion q2, float amount)
 }
 // Calculates spherical linear interpolation between two quaternions
 Quaternion QuaternionSlerp(Quaternion q1, Quaternion q2, float amount)
+{
+    auto result = Vector4(0, 0, 0, 0);
 
+    float cosHalfTheta = q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w;
+
+    if (cosHalfTheta < 0)
+    {
+        q2.x = -q2.x; q2.y = -q2.y; q2.z = -q2.z; q2.w = -q2.w;
+        cosHalfTheta = -cosHalfTheta;
+    }
+
+    if (fabs(cosHalfTheta) >= 1.0f) result = q1;
+    else if (cosHalfTheta > 0.95f) result = QuaternionNlerp(q1, q2, amount);
+
+    else
+    {
+        float halfTheta = acosf(cosHalfTheta);
+        float sinHalfTheta = sqrtf(1.0f - cosHalfTheta*cosHalfTheta);
+
+        if (fabs(sinHalfTheta) < 0.001f)
+        {
+            result.x = (q1.x * 0.5f + q2.x * 0.5f);
+            result.y = (q1.y * 0.5f + q2.y * 0.5f);
+            result.z = (q1.z * 0.5f + q2.z * 0.5f);
+            result.w = (q1.w * 0.5f + q2.w * 0.5f);
+        }
+
+        else
+        {
+            float ratioA = sinf((1 - amount) * halfTheta) /sinHalfTheta;
+            float ratioB = sinf(amount * halfTheta) / sinHalfTheta;
+
+            result.x = (q1.x * ratioA + q2.x * ratioB);
+            result.y = (q1.y * ratioA + q2.y * ratioB);
+            result.z = (q1.z * ratioA + q2.z * ratioB);
+            result.w = (q1.w * ratioA + q2.w * ratioB);
+        }
+    }
+
+    return result;
+}
 // Calculate quaternion based on the rotation from one vector to another
 
 // Vector3DotProduct(from, to)
