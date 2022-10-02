@@ -509,6 +509,11 @@ float Vector3Length(const Vector3 v)
 
 // Calculate vector square length
 float Vector3LengthSqr(const Vector3 v)
+{
+    float result = v.x * v.x + v.y * v.y + v.z * v.z;
+
+    return result;
+}
 
 // Calculate two vectors dot product
 float Vector3DotProduct(Vector3 v1, Vector3 v2)
