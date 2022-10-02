@@ -6,11 +6,27 @@ import raylib.raymath;
 import raylib.rgestures;
 import raylib.rlgl;
 import raylib.external.msf_gif;
+import raylib.external.sinfl;
+import raylib.external.sdefl;
 
 import core.stdc.stdlib;
 import core.stdc.math;
 import core.stdc.string;
 import core.sys.posix.sys.time;
+import core.stdc.config;
+import core.stdc.stdio;
+
+// this is the entire public interface of sinfl, no need for a module.
+version(Posix)
+{
+    import core.sys.posix.sys.stat;
+}
+else version(Windows)
+{
+    import core.sys.windows.stat;
+    alias stat_t = struct_stat;
+}
+else static assert(0, "Unknown Platform");
 
 // define allocation functions
 alias RL_MALLOC = malloc;
@@ -28,18 +44,36 @@ version(Windows)
     extern(Windows) uint timeBeginPeriod(uint uPeriod);
     extern(Windows) uint timeEndPeriod(uint uPeriod);
     extern(Windows) void Sleep(cpp_ulong msTimeout);
+
+    // TODO find these definitions
+    // #include <direct.h>
+    alias GETCWD = _getcwd;
+    alias CHDIR = _chdir;
+
+    // TODO: rewrite this lib
+    import raylib.external.dirent;
+}
+else version(Posix)
+{
+    import core.sys.posix.unistd;
+    import core.sys.posix.dirent;
+    alias GETCWD = getcwd;
+    alias CHDIR = chdir;
 }
 
 // port of rcore.c
 //
-enum MAX_KEYBOARD_KEYS = 512;        // Maximum number of keyboard keys supported
-enum MAX_MOUSE_BUTTONS = 8;          // Maximum number of mouse buttons supported
-enum MAX_GAMEPADS = 4;               // Maximum number of gamepads supported
-enum MAX_GAMEPAD_AXIS = 8;           // Maximum number of axis supported (per gamepad)
-enum MAX_GAMEPAD_BUTTONS = 32;       // Maximum number of buttons supported (per gamepad)
-enum MAX_TOUCH_POINTS = 8;           // Maximum number of touch points supported
-enum MAX_KEY_PRESSED_QUEUE = 16;     // Maximum number of keys in the key input queue
-enum MAX_CHAR_PRESSED_QUEUE = 16;    // Maximum number of characters in the char input queue
+private {
+    enum MAX_KEYBOARD_KEYS = 512;        // Maximum number of keyboard keys supported
+    enum MAX_MOUSE_BUTTONS = 8;          // Maximum number of mouse buttons supported
+    enum MAX_GAMEPADS = 4;               // Maximum number of gamepads supported
+    enum MAX_GAMEPAD_AXIS = 8;           // Maximum number of axis supported (per gamepad)
+    enum MAX_GAMEPAD_BUTTONS = 32;       // Maximum number of buttons supported (per gamepad)
+    enum MAX_TOUCH_POINTS = 8;           // Maximum number of touch points supported
+    enum MAX_KEY_PRESSED_QUEUE = 16;     // Maximum number of keys in the key input queue
+    enum MAX_CHAR_PRESSED_QUEUE = 16;    // Maximum number of characters in the char input queue
+    enum MAX_DIRECTORY_FILES = 512;
+}
 
 version(all) { // #if defined(SUPPORT_DEFAULT_FONT)
     void LoadFontDefault();          // [Module: text] Loads default font on InitWindow()
@@ -137,8 +171,8 @@ private struct CoreData {
         }
         struct _Keyboard {
             int exitKey;                    // Default exit key
-            char[MAX_KEYBOARD_KEYS] currentKeyState = 0;        // Registers current frame key state
-            char[MAX_KEYBOARD_KEYS] previousKeyState = 0;       // Registers previous frame key state
+            ubyte[MAX_KEYBOARD_KEYS] currentKeyState = 0;        // Registers current frame key state
+            ubyte[MAX_KEYBOARD_KEYS] previousKeyState = 0;       // Registers previous frame key state
 
             int[MAX_KEY_PRESSED_QUEUE] keyPressedQueue;     // Input keys queue
             int keyPressedQueueCount;       // Input keys queue count
@@ -166,8 +200,8 @@ private struct CoreData {
             bool cursorHidden;              // Track if cursor is hidden
             bool cursorOnScreen;            // Tracks if cursor is inside client area
 
-            char[MAX_MOUSE_BUTTONS] currentButtonState = 0;     // Registers current mouse button state
-            char[MAX_MOUSE_BUTTONS] previousButtonState = 0;    // Registers previous mouse button state
+            ubyte[MAX_MOUSE_BUTTONS] currentButtonState = 0;     // Registers current mouse button state
+            ubyte[MAX_MOUSE_BUTTONS] previousButtonState = 0;    // Registers previous mouse button state
             float currentWheelMove = 0;         // Registers current mouse wheel variation
             float previousWheelMove = 0;        // Registers previous mouse wheel variation
             version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
@@ -187,8 +221,8 @@ private struct CoreData {
             int axisCount;                  // Register number of available gamepad axis
             bool[MAX_GAMEPADS] ready;       // Flag to know if gamepad is ready
             char[64][MAX_GAMEPADS] name = [0];    // Gamepad name holder
-            char[MAX_GAMEPAD_BUTTONS][MAX_GAMEPADS] currentButtonState = [0];     // Current gamepad buttons state
-            char[MAX_GAMEPAD_BUTTONS][MAX_GAMEPADS] previousButtonState = [0];    // Previous gamepad buttons state
+            ubyte[MAX_GAMEPAD_BUTTONS][MAX_GAMEPADS] currentButtonState = [0];     // Current gamepad buttons state
+            ubyte[MAX_GAMEPAD_BUTTONS][MAX_GAMEPADS] previousButtonState = [0];    // Previous gamepad buttons state
             float[MAX_GAMEPAD_AXIS][MAX_GAMEPADS] axisState = [0];                // Gamepad axis state
             version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
                 pthread_t threadId;             // Gamepad reading thread id
@@ -227,6 +261,11 @@ version(all) { // #if defined(SUPPORT_SCREEN_CAPTURE)
     private __gshared int screenshotCounter = 0;
     mixin ExportForC!"screenshotCounter";
 }
+
+private __gshared char **dirFilesPath = null;
+mixin ExportForC!"dirFilesPath";
+private __gshared int dirFileCount = 0;
+mixin ExportForC!"dirFileCount";
 
 /// Initialize window and OpenGL context
 /// NOTE: data parameter could be used to pass any kind of required data to the initialization
@@ -3038,7 +3077,7 @@ void UnloadVrStereoConfig(VrStereoConfig config)
 }
 
 /// Load shader from files and bind default locations
-/// NOTE: If shader string is NULL, using default vertex/fragment shaders
+/// NOTE: If shader string is null, using default vertex/fragment shaders
 Shader LoadShader(const char *vsFileName, const char *fsFileName)
 {
     Shader shader;
@@ -3394,8 +3433,6 @@ void SetConfigFlags(uint flags)
     CORE.Window.flags |= flags;
 }
 
-// NOTE TRACELOG() function is located in [utils.h]
-
 /// Takes a screenshot of current screen (saved a .png)
 void TakeScreenshot(const char *fileName)
 {
@@ -3434,4 +3471,1373 @@ int GetRandomValue(int min, int max)
 void SetRandomSeed(uint seed)
 {
     srand(seed);
+}
+
+/// Check if the file exists
+bool FileExists(const char *fileName)
+{
+    bool result = false;
+
+    version(Windows) { //#if defined(_WIN32)
+        if (_access(fileName, 0) != -1) result = true;
+    } else {
+        if (access(fileName, F_OK) != -1) result = true;
+    }
+
+    return result;
+}
+
+/// Check file extension
+/// NOTE: Extensions checking is not case-sensitive
+bool IsFileExtension(const char *fileName, const char *ext)
+{
+    bool result = false;
+    const char *fileExt = GetFileExtension(fileName);
+
+    if (fileExt != null)
+    {
+        version(all) { // #if defined(SUPPORT_TEXT_MANIPULATION)
+            int extCount = 0;
+            const char **checkExts = TextSplit(ext, ';', &extCount);
+
+            char[16] fileExtLower = 0;
+            strcpy(fileExtLower.ptr, TextToLower(fileExt));
+
+            for (int i = 0; i < extCount; i++)
+            {
+                if (TextIsEqual(fileExtLower.ptr, TextToLower(checkExts[i])))
+                {
+                    result = true;
+                    break;
+                }
+            }
+        } else {
+            if (strcmp(fileExt, ext) == 0) result = true;
+        }
+    }
+
+    return result;
+}
+
+/// Check if a directory path exists
+bool DirectoryExists(const char *dirPath)
+{
+    bool result = false;
+    DIR *dir = opendir(dirPath);
+
+    if (dir != null)
+    {
+        result = true;
+        closedir(dir);
+    }
+
+    return result;
+}
+
+/// Get pointer to extension for a filename string (includes the dot: .png)
+const(char) *GetFileExtension(const char *fileName)
+{
+    const char *dot = strrchr(fileName, '.');
+
+    if (!dot || dot == fileName) return null;
+
+    return dot;
+}
+
+/// String pointer reverse break: returns right-most occurrence of charset in s
+private const(char) *strprbrk(const(char)* s, const char *charset)
+{
+    const(char)*latestMatch = null;
+    for (; (s = strpbrk(s, charset)) != null; latestMatch = s++) { }
+    return latestMatch;
+}
+
+/// Get pointer to filename for a path string
+const(char) *GetFileName(const(char)* filePath)
+{
+    const(char)* fileName = null;
+    if (filePath != null) fileName = strprbrk(filePath, "\\/");
+
+    if (!fileName) return filePath;
+
+    return fileName + 1;
+}
+
+/// Get filename string without extension (uses static string)
+const(char) *GetFileNameWithoutExt(const char *filePath)
+{
+    enum MAX_FILENAMEWITHOUTEXT_LENGTH = 128;
+
+    static char[MAX_FILENAMEWITHOUTEXT_LENGTH] fileName = 0;
+    memset(fileName.ptr, 0, MAX_FILENAMEWITHOUTEXT_LENGTH);
+
+    if (filePath != null) strcpy(fileName.ptr, GetFileName(filePath));   // Get filename with extension
+
+    int size = cast(int)strlen(fileName.ptr);   // Get size in bytes
+
+    for (int i = 0; (i < size) && (i < MAX_FILENAMEWITHOUTEXT_LENGTH); i++)
+    {
+        if (fileName[i] == '.')
+        {
+            // NOTE: We break on first '.' found
+            fileName[i] = '\0';
+            break;
+        }
+    }
+
+    return fileName.ptr;
+}
+
+/// Get directory for a given filePath
+const(char)*GetDirectoryPath(const char *filePath)
+{
+/*
+    // NOTE: Directory separator is different in Windows and other platforms,
+    // fortunately, Windows also support the '/' separator, that's the one should be used
+    #if defined(_WIN32)
+        char separator = '\\';
+    #else
+        char separator = '/';
+    #endif
+*/
+    const(char) *lastSlash = null;
+    static char[MAX_FILEPATH_LENGTH] dirPath = 0;
+    memset(dirPath.ptr, 0, MAX_FILEPATH_LENGTH);
+
+    // In case provided path does not contain a root drive letter (C:\, D:\) nor leading path separator (\, /),
+    // we add the current directory path to dirPath
+    if (filePath[1] != ':' && filePath[0] != '\\' && filePath[0] != '/')
+    {
+        // For security, we set starting path to current directory,
+        // obtained path will be concated to this
+        dirPath[0] = '.';
+        dirPath[1] = '/';
+    }
+
+    lastSlash = strprbrk(filePath, "\\/");
+    if (lastSlash)
+    {
+        if (lastSlash == filePath)
+        {
+            // The last and only slash is the leading one: path is in a root directory
+            dirPath[0] = filePath[0];
+            dirPath[1] = '\0';
+        }
+        else
+        {
+            // NOTE: Be careful, strncpy() is not safe, it does not care about '\0'
+            memcpy(dirPath.ptr + (filePath[1] != ':' && filePath[0] != '\\' && filePath[0] != '/' ? 2 : 0), filePath, strlen(filePath) - (strlen(lastSlash) - 1));
+            dirPath[strlen(filePath) - strlen(lastSlash) + (filePath[1] != ':' && filePath[0] != '\\' && filePath[0] != '/' ? 2 : 0)] = '\0';  // Add '\0' manually
+        }
+    }
+
+    return dirPath.ptr;
+}
+
+/// Get previous directory path for a given path
+const(char) *GetPrevDirectoryPath(const char *dirPath)
+{
+    static char[MAX_FILEPATH_LENGTH] prevDirPath = 0;
+    memset(prevDirPath.ptr, 0, MAX_FILEPATH_LENGTH);
+    int pathLen = cast(int)strlen(dirPath);
+
+    if (pathLen <= 3) strcpy(prevDirPath.ptr, dirPath);
+
+    for (int i = (pathLen - 1); (i >= 0) && (pathLen > 3); i--)
+    {
+        if ((dirPath[i] == '\\') || (dirPath[i] == '/'))
+        {
+            // Check for root: "C:\" or "/"
+            if (((i == 2) && (dirPath[1] ==':')) || (i == 0)) i++;
+
+            strncpy(prevDirPath.ptr, dirPath, i);
+            break;
+        }
+    }
+
+    return prevDirPath.ptr;
+}
+
+//// Get current working directory
+const(char) *GetWorkingDirectory()
+{
+    static char[MAX_FILEPATH_LENGTH] currentDir = 0;
+    memset(currentDir.ptr, 0, MAX_FILEPATH_LENGTH);
+
+    char *path = GETCWD(currentDir.ptr, MAX_FILEPATH_LENGTH - 1);
+
+    return path;
+}
+
+
+/// Get filenames in a directory path (max 512 files)
+/// NOTE: Files count is returned by parameters pointer
+char **GetDirectoryFiles(const char *dirPath, int *fileCount)
+{
+
+    ClearDirectoryFiles();
+
+    // Memory allocation for MAX_DIRECTORY_FILES
+    dirFilesPath = cast(char **)malloc(MAX_DIRECTORY_FILES * (char *).sizeof);
+    for (int i = 0; i < MAX_DIRECTORY_FILES; i++) dirFilesPath[i] = cast(char *)malloc(MAX_FILEPATH_LENGTH * char.sizeof);
+
+    int counter = 0;
+    dirent *entity;
+    DIR *dir = opendir(dirPath);
+
+    if (dir != null)  // It's a directory
+    {
+        // TODO: Reading could be done in two passes,
+        // first one to count files and second one to read names
+        // That way we can allocate required memory, instead of a limited pool
+
+        while ((entity = readdir(dir)) != null)
+        {
+            strcpy(dirFilesPath[counter], entity.d_name.ptr);
+            counter++;
+        }
+
+        closedir(dir);
+    }
+    else TraceLog(TraceLogLevel.LOG_WARNING, "FILEIO: Failed to open requested directory");  // Maybe it's a file...
+
+    dirFileCount = counter;
+    *fileCount = dirFileCount;
+
+    return dirFilesPath;
+}
+
+/// Clear directory files paths buffers
+void ClearDirectoryFiles()
+{
+    if (dirFileCount > 0)
+    {
+        for (int i = 0; i < MAX_DIRECTORY_FILES; i++) free(dirFilesPath[i]);
+
+        free(dirFilesPath);
+    }
+
+    dirFileCount = 0;
+}
+
+/// Change working directory, returns true on success
+bool ChangeDirectory(const char *dir)
+{
+    int result = CHDIR(dir);
+
+    if (result != 0) TraceLog(TraceLogLevel.LOG_WARNING, "SYSTEM: Failed to change to directory: %s", dir);
+
+    return (result == 0);
+}
+
+/// Check if a file has been dropped into window
+bool IsFileDropped()
+{
+    if (CORE.Window.dropFileCount > 0) return true;
+    else return false;
+}
+
+/// Get dropped files names
+char **GetDroppedFiles(int *count)
+{
+    *count = CORE.Window.dropFileCount;
+    return CORE.Window.dropFilesPath;
+}
+
+/// Clear dropped files paths buffer
+void ClearDroppedFiles()
+{
+    if (CORE.Window.dropFileCount > 0)
+    {
+        for (int i = 0; i < CORE.Window.dropFileCount; i++) free(CORE.Window.dropFilesPath[i]);
+
+        free(CORE.Window.dropFilesPath);
+
+        CORE.Window.dropFileCount = 0;
+    }
+}
+
+/// Get file modification time (last write time)
+c_long GetFileModTime(const char *fileName)
+{
+    stat_t result;
+
+    if (stat(fileName, &result) == 0)
+    {
+        time_t mod = result.st_mtime;
+
+        return cast(c_long)mod;
+    }
+
+    return 0;
+}
+
+/// Compress data (DEFLATE algorythm)
+ubyte *CompressData(ubyte *data, int dataLength, int *compDataLength)
+{
+    enum COMPRESSION_QUALITY_DEFLATE = 8;
+
+    ubyte *compData = null;
+
+    version(all) { // #if defined(SUPPORT_COMPRESSION_API)
+                   // Compress data and generate a valid DEFLATE stream
+        sdefl sdeflThing;
+        int bounds = sdefl_bound(dataLength);
+        compData = cast(ubyte *)RL_CALLOC(bounds, 1);
+        *compDataLength = sdeflate(&sdeflThing, compData, data, dataLength, COMPRESSION_QUALITY_DEFLATE);   // Compression level 8, same as stbwi
+
+        TraceLog(TraceLogLevel.LOG_INFO, "SYSTEM: Compress data: Original size: %i -> Comp. size: %i", dataLength, *compDataLength);
+    }
+
+    return compData;
+}
+
+/// Decompress data (DEFLATE algorythm)
+ubyte *DecompressData(ubyte *compData, int compDataLength, int *dataLength)
+{
+    ubyte *data = null;
+
+    version(all) { // #if defined(SUPPORT_COMPRESSION_API)
+        // Decompress data from a valid DEFLATE stream
+        data = cast(ubyte *)RL_CALLOC(MAX_DECOMPRESSION_SIZE*1024*1024, 1);
+        int length = sinflate(data, MAX_DECOMPRESSION_SIZE, compData, compDataLength);
+        ubyte *temp = cast(ubyte *)RL_REALLOC(data, length);
+
+        if (temp != null) data = temp;
+        else TraceLog(TraceLogLevel.LOG_WARNING, "SYSTEM: Failed to re-allocate required decompression memory");
+
+        *dataLength = length;
+
+        TraceLog(TraceLogLevel.LOG_INFO, "SYSTEM: Decompress data: Comp. size: %i -> Original size: %i", compDataLength, *dataLength);
+    }
+
+    return data;
+}
+
+/// Encode data to Base64 string
+char *EncodeDataBase64(const ubyte *data, int dataLength, int *outputLength)
+{
+    static const ubyte[] base64encodeTable = [
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+        'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+        'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
+    ];
+
+    static const int[] modTable = [ 0, 2, 1 ];
+
+    *outputLength = 4*((dataLength + 2)/3);
+
+    char *encodedData = cast(char *)RL_MALLOC(*outputLength);
+
+    if (encodedData == null) return null;
+
+    for (int i = 0, j = 0; i < dataLength;)
+    {
+        uint octetA = (i < dataLength)? data[i++] : 0;
+        uint octetB = (i < dataLength)? data[i++] : 0;
+        uint octetC = (i < dataLength)? data[i++] : 0;
+
+        uint triple = (octetA << 0x10) + (octetB << 0x08) + octetC;
+
+        encodedData[j++] = base64encodeTable[(triple >> 3*6) & 0x3F];
+        encodedData[j++] = base64encodeTable[(triple >> 2*6) & 0x3F];
+        encodedData[j++] = base64encodeTable[(triple >> 1*6) & 0x3F];
+        encodedData[j++] = base64encodeTable[(triple >> 0*6) & 0x3F];
+    }
+
+    for (int i = 0; i < modTable[dataLength%3]; i++) encodedData[*outputLength - 1 - i] = '=';
+
+    return encodedData;
+}
+
+/// Decode Base64 string data
+ubyte *DecodeDataBase64(ubyte *data, int *outputLength)
+{
+    static const ubyte[] base64decodeTable = [
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 62, 0, 0, 0, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 0, 0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
+        37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
+    ];
+
+    // Get output size of Base64 input data
+    int outLength = 0;
+    for (int i = 0; data[4*i] != 0; i++)
+    {
+        if (data[4*i + 3] == '=')
+        {
+            if (data[4*i + 2] == '=') outLength += 1;
+            else outLength += 2;
+        }
+        else outLength += 3;
+    }
+
+    // Allocate memory to store decoded Base64 data
+    ubyte *decodedData = cast(ubyte *)RL_MALLOC(outLength);
+
+    for (int i = 0; i < outLength/3; i++)
+    {
+        ubyte a = base64decodeTable[data[4*i]];
+        ubyte b = base64decodeTable[data[4*i + 1]];
+        ubyte c = base64decodeTable[data[4*i + 2]];
+        ubyte d = base64decodeTable[data[4*i + 3]];
+
+        decodedData[3*i] = cast(ubyte)((a << 2) | (b >> 4));
+        decodedData[3*i + 1] = cast(ubyte)((b << 4) | (c >> 2));
+        decodedData[3*i + 2] = cast(ubyte)((c << 6) | d);
+    }
+
+    if (outLength%3 == 1)
+    {
+        int n = outLength/3;
+        ubyte a = base64decodeTable[data[4*n]];
+        ubyte b = base64decodeTable[data[4*n + 1]];
+        decodedData[outLength - 1] = cast(ubyte)((a << 2) | (b >> 4));
+    }
+    else if (outLength%3 == 2)
+    {
+        int n = outLength/3;
+        ubyte a = base64decodeTable[data[4*n]];
+        ubyte b = base64decodeTable[data[4*n + 1]];
+        ubyte c = base64decodeTable[data[4*n + 2]];
+        decodedData[outLength - 2] = cast(ubyte)((a << 2) | (b >> 4));
+        decodedData[outLength - 1] = cast(ubyte)((b << 4) | (c >> 2));
+    }
+
+    *outputLength = outLength;
+    return decodedData;
+}
+
+/// Save integer value to storage file (to defined position)
+/// NOTE: Storage positions is directly related to file memory layout (4 bytes each integer)
+bool SaveStorageValue(uint position, int value)
+{
+    bool success = false;
+
+    version(all) { // #if defined(SUPPORT_DATA_STORAGE)
+        char[512] path = 0;
+        strcpy(path.ptr, TextFormat("%s/%s", CORE.Storage.basePath, STORAGE_DATA_FILE.ptr));
+
+        uint dataSize = 0;
+        uint newDataSize = 0;
+        ubyte *fileData = LoadFileData(path.ptr, &dataSize);
+        ubyte *newFileData = null;
+
+        if (fileData != null)
+        {
+            if (dataSize <= (position*int.sizeof))
+            {
+                // Increase data size up to position and store value
+                newDataSize = (position + 1)*int(int.sizeof);
+                newFileData = cast(ubyte *)RL_REALLOC(fileData, newDataSize);
+
+                if (newFileData != null)
+                {
+                    // RL_REALLOC succeded
+                    int *dataPtr = cast(int *)newFileData;
+                    dataPtr[position] = value;
+                }
+                else
+                {
+                    // RL_REALLOC failed
+                    TraceLog(TraceLogLevel.LOG_WARNING, "FILEIO: [%s] Failed to realloc data (%u), position in bytes (%u) bigger than actual file size", path.ptr, dataSize, position*int(int.sizeof));
+
+                    // We store the old size of the file
+                    newFileData = fileData;
+                    newDataSize = dataSize;
+                }
+            }
+            else
+            {
+                // Store the old size of the file
+                newFileData = fileData;
+                newDataSize = dataSize;
+
+                // Replace value on selected position
+                int *dataPtr = cast(int *)newFileData;
+                dataPtr[position] = value;
+            }
+
+            success = SaveFileData(path.ptr, newFileData, newDataSize);
+            RL_FREE(newFileData);
+
+            TraceLog(TraceLogLevel.LOG_INFO, "FILEIO: [%s] Saved storage value: %i", path.ptr, value);
+        }
+        else
+        {
+            TraceLog(TraceLogLevel.LOG_INFO, "FILEIO: [%s] File created successfully", path.ptr);
+
+            dataSize = (position + 1)*int(int.sizeof);
+            fileData = cast(ubyte *)RL_MALLOC(dataSize);
+            int *dataPtr = cast(int *)fileData;
+            dataPtr[position] = value;
+
+            success = SaveFileData(path.ptr, fileData, dataSize);
+            UnloadFileData(fileData);
+
+            TraceLog(TraceLogLevel.LOG_INFO, "FILEIO: [%s] Saved storage value: %i", path.ptr, value);
+        }
+    }
+
+    return success;
+}
+
+/// Load integer value from storage file (from defined position)
+/// NOTE: If requested position could not be found, value 0 is returned
+int LoadStorageValue(uint position)
+{
+    int value = 0;
+
+    version(all) { // #if defined(SUPPORT_DATA_STORAGE)
+        char[512] path = 0;
+        strcpy(path.ptr, TextFormat("%s/%s", CORE.Storage.basePath, STORAGE_DATA_FILE.ptr));
+
+        uint dataSize = 0;
+        ubyte *fileData = LoadFileData(path.ptr, &dataSize);
+
+        if (fileData != null)
+        {
+            if (dataSize < (position*4)) TraceLog(TraceLogLevel.LOG_WARNING, "FILEIO: [%s] Failed to find storage position: %i", path.ptr, position);
+            else
+            {
+                int *dataPtr = cast(int *)fileData;
+                value = dataPtr[position];
+            }
+
+            UnloadFileData(fileData);
+
+            TraceLog(TraceLogLevel.LOG_INFO, "FILEIO: [%s] Loaded storage value: %i", path.ptr, value);
+        }
+    }
+    return value;
+}
+
+/// Open URL with default system browser (if available)
+/// NOTE: This function is only safe to use if you control the URL given.
+/// A user could craft a malicious string performing another action.
+/// Only call this function yourself not with user input or make sure to check the string yourself.
+/// Ref: https://github.com/raysan5/raylib/issues/686
+void OpenURL(const char *url)
+{
+    // Small security check trying to avoid (partially) malicious code...
+    // sorry for the inconvenience when you hit this point...
+    if (strchr(url, '\'') != null)
+    {
+        TraceLog(TraceLogLevel.LOG_WARNING, "SYSTEM: Provided URL is not valid");
+    }
+    else
+    {
+        version(all) { // #if defined(PLATFORM_DESKTOP)
+            char *cmd = cast(char *)RL_CALLOC(strlen(url) + 10, char.sizeof);
+            version(Windows) {
+                sprintf(cmd, "explorer %s", url);
+            }
+            version(linux) {
+                sprintf(cmd, "xdg-open '%s'", url); // Alternatives: firefox, x-www-browser
+            }
+            version(FreeBSD) {
+                sprintf(cmd, "xdg-open '%s'", url); // Alternatives: firefox, x-www-browser
+            }
+            version(OSX) {
+                sprintf(cmd, "open '%s'", url);
+            }
+            system(cmd);
+            RL_FREE(cmd);
+        }
+        version(none) { // #if defined(PLATFORM_WEB)
+            emscripten_run_script(TextFormat("window.open('%s', '_blank')", url));
+        }
+    }
+}
+
+//----------------------------------------------------------------------------------
+// Module Functions Definition - Input (Keyboard, Mouse, Gamepad) Functions
+//----------------------------------------------------------------------------------
+/// Check if a key has been pressed once
+bool IsKeyPressed(int key)
+{
+    bool pressed = false;
+
+    if ((CORE.Input.Keyboard.previousKeyState[key] == 0) && (CORE.Input.Keyboard.currentKeyState[key] == 1)) pressed = true;
+
+    return pressed;
+}
+
+/// Check if a key is being pressed (key held down)
+bool IsKeyDown(int key)
+{
+    if (CORE.Input.Keyboard.currentKeyState[key] == 1) return true;
+    else return false;
+}
+
+/// Check if a key has been released once
+bool IsKeyReleased(int key)
+{
+    bool released = false;
+
+    if ((CORE.Input.Keyboard.previousKeyState[key] == 1) && (CORE.Input.Keyboard.currentKeyState[key] == 0)) released = true;
+
+    return released;
+}
+
+/// Check if a key is NOT being pressed (key not held down)
+bool IsKeyUp(int key)
+{
+    if (CORE.Input.Keyboard.currentKeyState[key] == 0) return true;
+    else return false;
+}
+
+/// Get the last key pressed
+int GetKeyPressed()
+{
+    int value = 0;
+
+    if (CORE.Input.Keyboard.keyPressedQueueCount > 0)
+    {
+        // Get character from the queue head
+        value = CORE.Input.Keyboard.keyPressedQueue[0];
+
+        // Shift elements 1 step toward the head.
+        for (int i = 0; i < (CORE.Input.Keyboard.keyPressedQueueCount - 1); i++)
+            CORE.Input.Keyboard.keyPressedQueue[i] = CORE.Input.Keyboard.keyPressedQueue[i + 1];
+
+        // Reset last character in the queue
+        CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = 0;
+        CORE.Input.Keyboard.keyPressedQueueCount--;
+    }
+
+    return value;
+}
+
+/// Get the last char pressed
+int GetCharPressed()
+{
+    int value = 0;
+
+    if (CORE.Input.Keyboard.charPressedQueueCount > 0)
+    {
+        // Get character from the queue head
+        value = CORE.Input.Keyboard.charPressedQueue[0];
+
+        // Shift elements 1 step toward the head.
+        for (int i = 0; i < (CORE.Input.Keyboard.charPressedQueueCount - 1); i++)
+            CORE.Input.Keyboard.charPressedQueue[i] = CORE.Input.Keyboard.charPressedQueue[i + 1];
+
+        // Reset last character in the queue
+        CORE.Input.Keyboard.charPressedQueue[CORE.Input.Keyboard.charPressedQueueCount] = 0;
+        CORE.Input.Keyboard.charPressedQueueCount--;
+    }
+
+    return value;
+}
+
+/// Set a custom key to exit program
+/// NOTE: default exitKey is ESCAPE
+void SetExitKey(int key)
+{
+    version(all) { // #if !defined(PLATFORM_ANDROID)
+        CORE.Input.Keyboard.exitKey = key;
+    }
+}
+
+// NOTE: Gamepad support not implemented in emscripten GLFW3 (PLATFORM_WEB)
+
+/// Check if a gamepad is available
+bool IsGamepadAvailable(int gamepad)
+{
+    bool result = false;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad]) result = true;
+
+    return result;
+}
+
+/// Get gamepad internal name id
+const(char)* GetGamepadName(int gamepad)
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        if (CORE.Input.Gamepad.ready[gamepad]) return glfwGetJoystickName(gamepad);
+        else return null;
+    }
+    else version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        if (CORE.Input.Gamepad.ready[gamepad]) ioctl(CORE.Input.Gamepad.streamId[gamepad], JSIOCGNAME(64), &CORE.Input.Gamepad.name[gamepad]);
+        return CORE.Input.Gamepad.name[gamepad];
+    }
+    else version(none) { // #if defined(PLATFORM_WEB)
+        return CORE.Input.Gamepad.name[gamepad];
+    }
+    else return null;
+}
+
+/// Get gamepad axis count
+int GetGamepadAxisCount(int gamepad)
+{
+    version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        int axisCount = 0;
+        if (CORE.Input.Gamepad.ready[gamepad]) ioctl(CORE.Input.Gamepad.streamId[gamepad], JSIOCGAXES, &axisCount);
+        CORE.Input.Gamepad.axisCount = axisCount;
+    }
+
+    return CORE.Input.Gamepad.axisCount;
+}
+
+/// Get axis movement vector for a gamepad
+float GetGamepadAxisMovement(int gamepad, int axis)
+{
+    float value = 0;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (axis < MAX_GAMEPAD_AXIS) &&
+        (fabsf(CORE.Input.Gamepad.axisState[gamepad][axis]) > 0.1f)) value = CORE.Input.Gamepad.axisState[gamepad][axis];      // 0.1f = GAMEPAD_AXIS_MINIMUM_DRIFT/DELTA
+
+    return value;
+}
+
+/// Check if a gamepad button has been pressed once
+bool IsGamepadButtonPressed(int gamepad, int button)
+{
+    bool pressed = false;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE.Input.Gamepad.previousButtonState[gamepad][button] == 0) && (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 1)) pressed = true;
+
+    return pressed;
+}
+
+/// Check if a gamepad button is being pressed
+bool IsGamepadButtonDown(int gamepad, int button)
+{
+    bool result = false;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 1)) result = true;
+
+    return result;
+}
+
+/// Check if a gamepad button has NOT been pressed once
+bool IsGamepadButtonReleased(int gamepad, int button)
+{
+    bool released = false;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE.Input.Gamepad.previousButtonState[gamepad][button] == 1) && (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 0)) released = true;
+
+    return released;
+}
+
+/// Check if a gamepad button is NOT being pressed
+bool IsGamepadButtonUp(int gamepad, int button)
+{
+    bool result = false;
+
+    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 0)) result = true;
+
+    return result;
+}
+
+/// Get the last gamepad button pressed
+int GetGamepadButtonPressed()
+{
+    return CORE.Input.Gamepad.lastButtonPressed;
+}
+
+/// Set internal gamepad mappings
+int SetGamepadMappings(const char *mappings)
+{
+    int result = 0;
+
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        result = glfwUpdateGamepadMappings(mappings);
+    }
+
+    return result;
+}
+
+/// Check if a mouse button has been pressed once
+bool IsMouseButtonPressed(int button)
+{
+    bool pressed = false;
+
+    if ((CORE.Input.Mouse.currentButtonState[button] == 1) && (CORE.Input.Mouse.previousButtonState[button] == 0)) pressed = true;
+
+    // Map touches to mouse buttons checking
+    if ((CORE.Input.Touch.currentTouchState[button] == 1) && (CORE.Input.Touch.previousTouchState[button] == 0)) pressed = true;
+
+    return pressed;
+}
+
+/// Check if a mouse button is being pressed
+bool IsMouseButtonDown(int button)
+{
+    bool down = false;
+
+    if (CORE.Input.Mouse.currentButtonState[button] == 1) down = true;
+
+    // Map touches to mouse buttons checking
+    if (CORE.Input.Touch.currentTouchState[button] == 1) down = true;
+
+    return down;
+}
+
+/// Check if a mouse button has been released once
+bool IsMouseButtonReleased(int button)
+{
+    bool released = false;
+
+    if ((CORE.Input.Mouse.currentButtonState[button] == 0) && (CORE.Input.Mouse.previousButtonState[button] == 1)) released = true;
+
+    // Map touches to mouse buttons checking
+    if ((CORE.Input.Touch.currentTouchState[button] == 0) && (CORE.Input.Touch.previousTouchState[button] == 1)) released = true;
+
+    return released;
+}
+
+/// Check if a mouse button is NOT being pressed
+bool IsMouseButtonUp(int button)
+{
+    return !IsMouseButtonDown(button);
+}
+
+/// Get mouse position X
+int GetMouseX()
+{
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        return cast(int)CORE.Input.Touch.position[0].x;
+    } else {
+        return cast(int)((CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x);
+    }
+}
+
+/// Get mouse position Y
+int GetMouseY()
+{
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        return cast(int)CORE.Input.Touch.position[0].y;
+    } else {
+        return cast(int)((CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y)*CORE.Input.Mouse.scale.y);
+    }
+}
+
+/// Get mouse position XY
+Vector2 GetMousePosition()
+{
+    Vector2 position;
+
+    version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_WEB)
+        position = GetTouchPosition(0);
+    } else {
+        position.x = (CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x;
+        position.y = (CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y)*CORE.Input.Mouse.scale.y;
+    }
+
+    return position;
+}
+
+/// Get mouse delta between frames
+Vector2 GetMouseDelta()
+{
+    Vector2 delta;
+
+    delta.x = CORE.Input.Mouse.currentPosition.x - CORE.Input.Mouse.previousPosition.x;
+    delta.y = CORE.Input.Mouse.currentPosition.y - CORE.Input.Mouse.previousPosition.y;
+
+    return delta;
+}
+
+/// Set mouse position XY
+void SetMousePosition(int x, int y)
+{
+    CORE.Input.Mouse.currentPosition = Vector2(x, y);
+    version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+                   // NOTE: emscripten not implemented
+        glfwSetCursorPos(CORE.Window.handle, CORE.Input.Mouse.currentPosition.x, CORE.Input.Mouse.currentPosition.y);
+    }
+}
+
+/// Set mouse offset
+/// NOTE: Useful when rendering to different size targets
+void SetMouseOffset(int offsetX, int offsetY)
+{
+    CORE.Input.Mouse.offset = Vector2(offsetX, offsetY);
+}
+
+/// Set mouse scaling
+/// NOTE: Useful when rendering to different size targets
+void SetMouseScale(float scaleX, float scaleY)
+{
+    CORE.Input.Mouse.scale = Vector2(scaleX, scaleY);
+}
+
+/// Get mouse wheel movement Y
+float GetMouseWheelMove()
+{
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        return 0.0f;
+    } else version(none) { // #if defined(PLATFORM_WEB)
+        return CORE.Input.Mouse.previousWheelMove/100.0f;
+    } else {
+        return CORE.Input.Mouse.previousWheelMove;
+    }
+}
+
+/// Set mouse cursor
+/// NOTE: This is a no-op on platforms other than PLATFORM_DESKTOP
+void SetMouseCursor(int cursor)
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        CORE.Input.Mouse.cursor = cursor;
+        if (cursor == MouseCursor.MOUSE_CURSOR_DEFAULT) glfwSetCursor(CORE.Window.handle, null);
+        else
+        {
+            // NOTE: We are relating internal GLFW enum values to our MouseCursor enum values
+            glfwSetCursor(CORE.Window.handle, glfwCreateStandardCursor(0x00036000 + cursor));
+        }
+    }
+}
+
+/// Get touch position X for touch point 0 (relative to screen size)
+int GetTouchX()
+{
+    version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_WEB)
+        return cast(int)CORE.Input.Touch.position[0].x;
+    } else {   // PLATFORM_DESKTOP, PLATFORM_RPI, PLATFORM_DRM
+        return GetMouseX();
+    }
+}
+
+/// Get touch position Y for touch point 0 (relative to screen size)
+int GetTouchY()
+{
+    version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_WEB)
+        return cast(int)CORE.Input.Touch.position[0].y;
+    } else { // PLATFORM_DESKTOP, PLATFORM_RPI, PLATFORM_DRM
+        return GetMouseY();
+    }
+}
+
+/// Get touch position XY for a touch point index (relative to screen size)
+/// TODO: Touch position should be scaled depending on display size and render size
+Vector2 GetTouchPosition(int index)
+{
+    Vector2 position = Vector2(-1.0f, -1.0f);
+
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        // TODO: GLFW does not support multi-touch input just yet
+        // https://www.codeproject.com/Articles/668404/Programming-for-Multi-Touch
+        // https://docs.microsoft.com/en-us/windows/win32/wintouch/getting-started-with-multi-touch-messages
+        if (index == 0) position = GetMousePosition();
+    }
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        if (index < MAX_TOUCH_POINTS) position = CORE.Input.Touch.position[index];
+        else TraceLog(TraceLogLevel.LOG_WARNING, "INPUT: Required touch point out of range (Max touch points: %i)", MAX_TOUCH_POINTS);
+
+        if ((CORE.Window.screen.width > CORE.Window.display.width) || (CORE.Window.screen.height > CORE.Window.display.height))
+        {
+            position.x = position.x*(cast(float)CORE.Window.screen.width/cast(float)(CORE.Window.display.width - CORE.Window.renderOffset.x)) - CORE.Window.renderOffset.x/2;
+            position.y = position.y*(cast(float)CORE.Window.screen.height/cast(float)(CORE.Window.display.height - CORE.Window.renderOffset.y)) - CORE.Window.renderOffset.y/2;
+        }
+        else
+        {
+            position.x = position.x*(cast(float)CORE.Window.render.width/cast(float)CORE.Window.display.width) - CORE.Window.renderOffset.x/2;
+            position.y = position.y*(cast(float)CORE.Window.render.height/cast(float)CORE.Window.display.height) - CORE.Window.renderOffset.y/2;
+        }
+    }
+    version(none) { // #if defined(PLATFORM_WEB) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        if (index < MAX_TOUCH_POINTS) position = CORE.Input.Touch.position[index];
+        else TraceLog(TraceLogLevel.LOG_WARNING, "INPUT: Required touch point out of range (Max touch points: %i)", MAX_TOUCH_POINTS);
+    }
+
+    return position;
+}
+
+/// Get touch point identifier for given index
+int GetTouchPointId(int index)
+{
+    int id = -1;
+
+    if (index < MAX_TOUCH_POINTS) id = CORE.Input.Touch.pointId[index];
+
+    return id;
+}
+
+/// Get number of touch points
+int GetTouchPointCount()
+{
+    return CORE.Input.Touch.pointCount;
+}
+
+/// Wait for some milliseconds (stop program execution)
+/// NOTE: Sleep() granularity could be around 10 ms, it means, Sleep() could
+/// take longer than expected... for that reason we use the busy wait loop
+/// Ref: http://stackoverflow.com/questions/43057578/c-programming-win32-games-sleep-taking-longer-than-expected
+/// Ref: http://www.geisswerks.com/ryan/FAQS/timing.html --> All about timming on Win32!
+void WaitTime(float ms)
+{
+    version(none) { // #if defined(SUPPORT_BUSY_WAIT_LOOP)
+        double previousTime = GetTime();
+        double currentTime = 0.0;
+
+        // Busy wait loop
+        while ((currentTime - previousTime) < ms/1000.0f) currentTime = GetTime();
+    } else {
+        version(all) { //  #if defined(SUPPORT_PARTIALBUSY_WAIT_LOOP)
+            double busyWait = ms*0.05;     // NOTE: We are using a busy wait of 5% of the time
+            ms -= busyWait;
+        }
+
+        // System halt functions
+        version(Windows){
+            Sleep(cast(uint)ms);
+        } else version(OSX) {
+            usleep(cast(int)(ms*1000.0f));
+        } else version(Posix) { // #if defined(__linux__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__)
+            timespec req;
+            time_t sec = cast(int)(ms/1000.0f);
+            ms -= (sec*1000);
+            req.tv_sec = sec;
+            req.tv_nsec = cast(int)(ms*1000000L);
+
+            // NOTE: Use nanosleep() on Unix platforms... usleep() it's deprecated.
+            while (nanosleep(&req, &req) == -1) continue;
+        }
+
+        version(all) { // #if defined(SUPPORT_PARTIALBUSY_WAIT_LOOP)
+            double previousTime = GetTime();
+            double currentTime = 0.0;
+
+            // Partial busy wait loop (only a fraction of the total wait time)
+            while ((currentTime - previousTime) < busyWait/1000.0f) currentTime = GetTime();
+        }
+    }
+}
+
+/// Swap back buffer with front buffer (screen drawing)
+void SwapScreenBuffer()
+{
+    version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+        glfwSwapBuffers(CORE.Window.handle);
+    }
+
+    version(none) { // #if defined(PLATFORM_ANDROID) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+        eglSwapBuffers(CORE.Window.device, CORE.Window.surface);
+
+        version(none) { // #if defined(PLATFORM_DRM)
+            if (!CORE.Window.gbmSurface || (-1 == CORE.Window.fd) || !CORE.Window.connector || !CORE.Window.crtc)
+            {
+                TraceLog(TraceLogLevel.TraceLogLevel.LOG_ERROR, "DISPLAY: DRM initialization failed to swap");
+                abort();
+            }
+
+            gbm_bo *bo = gbm_surface_lock_front_buffer(CORE.Window.gbmSurface);
+            if (!bo)
+            {
+                TraceLog(TraceLogLevel.LOG_ERROR, "DISPLAY: Failed GBM to lock front buffer");
+                abort();
+            }
+
+            uint fb = 0;
+            int result = drmModeAddFB(CORE.Window.fd, CORE.Window.connector.modes[CORE.Window.modeIndex].hdisplay,
+                                      CORE.Window.connector.modes[CORE.Window.modeIndex].vdisplay, 24, 32, gbm_bo_get_stride(bo), gbm_bo_get_handle(bo).u32, &fb);
+            if (0 != result)
+            {
+                TraceLog(TraceLogLevel.LOG_ERROR, "DISPLAY: drmModeAddFB() failed with result: %d", result);
+                abort();
+            }
+
+            result = drmModeSetCrtc(CORE.Window.fd, CORE.Window.crtc.crtc_id, fb, 0, 0,
+                                    &CORE.Window.connector.connector_id, 1, &CORE.Window.connector.modes[CORE.Window.modeIndex]);
+            if (0 != result)
+            {
+                TraceLog(TraceLogLevel.LOG_ERROR, "DISPLAY: drmModeSetCrtc() failed with result: %d", result);
+                abort();
+            }
+
+            if (CORE.Window.prevFB)
+            {
+                result = drmModeRmFB(CORE.Window.fd, CORE.Window.prevFB);
+                if (0 != result)
+                {
+                    TraceLog(TraceLogLevel.LOG_ERROR, "DISPLAY: drmModeRmFB() failed with result: %d", result);
+                    abort();
+                }
+            }
+            CORE.Window.prevFB = fb;
+
+            if (CORE.Window.prevBO)
+            {
+                gbm_surface_release_buffer(CORE.Window.gbmSurface, CORE.Window.prevBO);
+            }
+
+            CORE.Window.prevBO = bo;
+        } // PLATFORM_DRM
+    } // PLATFORM_ANDROID || PLATFORM_RPI || PLATFORM_DRM
+}
+
+/// Register all input events
+void PollInputEvents()
+{
+    version(all) { // #if defined(SUPPORT_GESTURES_SYSTEM)
+        // NOTE: Gestures update must be called every frame to reset gestures correctly
+        // because ProcessGestureEvent() is just called on an event, not every frame
+        UpdateGestures();
+    }
+
+    // Reset keys/chars pressed registered
+    CORE.Input.Keyboard.keyPressedQueueCount = 0;
+    CORE.Input.Keyboard.charPressedQueueCount = 0;
+
+    version(all) { // #if !(defined(PLATFORM_RPI) || defined(PLATFORM_DRM))
+                    // Reset last gamepad button/axis registered state
+        CORE.Input.Gamepad.lastButtonPressed = -1;
+        CORE.Input.Gamepad.axisCount = 0;
+    }
+
+    version(none) { // #if defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
+                    // Register previous keys states
+        for (int i = 0; i < MAX_KEYBOARD_KEYS; i++) CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
+
+        PollKeyboardEvents();
+
+        // Register previous mouse states
+        CORE.Input.Mouse.previousWheelMove = CORE.Input.Mouse.currentWheelMove;
+        CORE.Input.Mouse.currentWheelMove = 0.0f;
+        for (int i = 0; i < MAX_MOUSE_BUTTONS; i++)
+        {
+            CORE.Input.Mouse.previousButtonState[i] = CORE.Input.Mouse.currentButtonState[i];
+            CORE.Input.Mouse.currentButtonState[i] = CORE.Input.Mouse.currentButtonStateEvdev[i];
+        }
+
+        // Register gamepads buttons events
+        for (int i = 0; i < MAX_GAMEPADS; i++)
+        {
+            if (CORE.Input.Gamepad.ready[i])
+            {
+                // Register previous gamepad states
+                for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
+            }
+        }
+    }
+
+    version(all) { // #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
+        // Keyboard/Mouse input polling (automatically managed by GLFW3 through callback)
+
+        // Register previous keys states
+        for (int i = 0; i < MAX_KEYBOARD_KEYS; i++) CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
+
+        // Register previous mouse states
+        for (int i = 0; i < MAX_MOUSE_BUTTONS; i++) CORE.Input.Mouse.previousButtonState[i] = CORE.Input.Mouse.currentButtonState[i];
+
+        // Register previous mouse wheel state
+        CORE.Input.Mouse.previousWheelMove = CORE.Input.Mouse.currentWheelMove;
+        CORE.Input.Mouse.currentWheelMove = 0.0f;
+
+        // Register previous mouse position
+        CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
+    }
+
+    // Register previous touch states
+    for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
+    
+    // Reset touch positions
+    // TODO: It resets on PLATFORM_WEB the mouse position and not filled again until a move-event,
+    // so, if mouse is not moved it returns a (0, 0) position... this behaviour should be reviewed!
+    //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ 0, 0 };
+
+    version(all) { // #if defined(PLATFORM_DESKTOP)
+        // Check if gamepads are ready
+        // NOTE: We do it here in case of disconnection
+        for (int i = 0; i < MAX_GAMEPADS; i++)
+        {
+            if (glfwJoystickPresent(i)) CORE.Input.Gamepad.ready[i] = true;
+            else CORE.Input.Gamepad.ready[i] = false;
+        }
+
+        // Register gamepads buttons events
+        for (int i = 0; i < MAX_GAMEPADS; i++)
+        {
+            if (CORE.Input.Gamepad.ready[i])     // Check if gamepad is available
+            {
+                // Register previous gamepad states
+                for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
+
+                // Get current gamepad state
+                // NOTE: There is no callback available, so we get it manually
+                // Get remapped buttons
+                GLFWgamepadstate state = { 0 };
+                glfwGetGamepadState(i, &state); // This remapps all gamepads so they have their buttons mapped like an xbox controller
+
+                const ubyte *buttons = state.buttons.ptr;
+
+                for (int k = 0; (buttons != null) && (k < GLFW_GAMEPAD_BUTTON_DPAD_LEFT + 1) && (k < MAX_GAMEPAD_BUTTONS); k++)
+                {
+                    GamepadButton button = cast(GamepadButton)-1;
+
+                    with(GamepadButton) switch (k)
+                    {
+                    case GLFW_GAMEPAD_BUTTON_Y: button = GAMEPAD_BUTTON_RIGHT_FACE_UP; break;
+                    case GLFW_GAMEPAD_BUTTON_B: button = GAMEPAD_BUTTON_RIGHT_FACE_RIGHT; break;
+                    case GLFW_GAMEPAD_BUTTON_A: button = GAMEPAD_BUTTON_RIGHT_FACE_DOWN; break;
+                    case GLFW_GAMEPAD_BUTTON_X: button = GAMEPAD_BUTTON_RIGHT_FACE_LEFT; break;
+
+                    case GLFW_GAMEPAD_BUTTON_LEFT_BUMPER: button = GAMEPAD_BUTTON_LEFT_TRIGGER_1; break;
+                    case GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER: button = GAMEPAD_BUTTON_RIGHT_TRIGGER_1; break;
+
+                    case GLFW_GAMEPAD_BUTTON_BACK: button = GAMEPAD_BUTTON_MIDDLE_LEFT; break;
+                    case GLFW_GAMEPAD_BUTTON_GUIDE: button = GAMEPAD_BUTTON_MIDDLE; break;
+                    case GLFW_GAMEPAD_BUTTON_START: button = GAMEPAD_BUTTON_MIDDLE_RIGHT; break;
+
+                    case GLFW_GAMEPAD_BUTTON_DPAD_UP: button = GAMEPAD_BUTTON_LEFT_FACE_UP; break;
+                    case GLFW_GAMEPAD_BUTTON_DPAD_RIGHT: button = GAMEPAD_BUTTON_LEFT_FACE_RIGHT; break;
+                    case GLFW_GAMEPAD_BUTTON_DPAD_DOWN: button = GAMEPAD_BUTTON_LEFT_FACE_DOWN; break;
+                    case GLFW_GAMEPAD_BUTTON_DPAD_LEFT: button = GAMEPAD_BUTTON_LEFT_FACE_LEFT; break;
+
+                    case GLFW_GAMEPAD_BUTTON_LEFT_THUMB: button = GAMEPAD_BUTTON_LEFT_THUMB; break;
+                    case GLFW_GAMEPAD_BUTTON_RIGHT_THUMB: button = GAMEPAD_BUTTON_RIGHT_THUMB; break;
+                    default: break;
+                    }
+
+                    if (button != -1)   // Check for valid button
+                    {
+                        if (buttons[k] == GLFW_PRESS)
+                        {
+                            CORE.Input.Gamepad.currentButtonState[i][button] = 1;
+                            CORE.Input.Gamepad.lastButtonPressed = button;
+                        }
+                        else CORE.Input.Gamepad.currentButtonState[i][button] = 0;
+                    }
+                }
+
+                // Get current axis state
+                const float *axes = state.axes.ptr;
+
+                for (int k = 0; (axes != null) && (k < GLFW_GAMEPAD_AXIS_LAST + 1) && (k < MAX_GAMEPAD_AXIS); k++)
+                {
+                    CORE.Input.Gamepad.axisState[i][k] = axes[k];
+                }
+
+                // Register buttons for 2nd triggers (because GLFW doesn't count these as buttons but rather axis)
+                CORE.Input.Gamepad.currentButtonState[i][GamepadButton.GAMEPAD_BUTTON_LEFT_TRIGGER_2] = cast(char)(CORE.Input.Gamepad.axisState[i][GamepadAxis.GAMEPAD_AXIS_LEFT_TRIGGER] > 0.1);
+                CORE.Input.Gamepad.currentButtonState[i][GamepadButton.GAMEPAD_BUTTON_RIGHT_TRIGGER_2] = cast(char)(CORE.Input.Gamepad.axisState[i][GamepadAxis.GAMEPAD_AXIS_RIGHT_TRIGGER] > 0.1);
+
+                CORE.Input.Gamepad.axisCount = GLFW_GAMEPAD_AXIS_LAST + 1;
+            }
+        }
+
+        CORE.Window.resizedLastFrame = false;
+
+        version(none) { // #if defined(SUPPORT_EVENTS_WAITING)
+            glfwWaitEvents();
+        } else {
+            glfwPollEvents();       // Register keyboard/mouse events (callbacks)... and window events!
+        }
+    }  // PLATFORM_DESKTOP
+
+    version(none) { // #if defined(PLATFORM_WEB)
+        CORE.Window.resizedLastFrame = false;
+    }  // PLATFORM_WEB
+
+    // Gamepad support using emscripten API
+    // NOTE: GLFW3 joystick functionality not available in web
+    version(none) { // #if defined(PLATFORM_WEB)
+        // Get number of gamepads connected
+        int numGamepads = 0;
+        if (emscripten_sample_gamepad_data() == EMSCRIPTEN_RESULT_SUCCESS) numGamepads = emscripten_get_num_gamepads();
+
+        for (int i = 0; (i < numGamepads) && (i < MAX_GAMEPADS); i++)
+        {
+            // Register previous gamepad button states
+            for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
+
+            EmscriptenGamepadEvent gamepadState;
+
+            int result = emscripten_get_gamepad_status(i, &gamepadState);
+
+            if (result == EMSCRIPTEN_RESULT_SUCCESS)
+            {
+                // Register buttons data for every connected gamepad
+                for (int j = 0; (j < gamepadState.numButtons) && (j < MAX_GAMEPAD_BUTTONS); j++)
+                {
+                    GamepadButton button = -1;
+
+                    // Gamepad Buttons reference: https://www.w3.org/TR/gamepad/#gamepad-interface
+                    with(GamepadButton) switch (j)
+                    {
+                    case 0: button = GAMEPAD_BUTTON_RIGHT_FACE_DOWN; break;
+                    case 1: button = GAMEPAD_BUTTON_RIGHT_FACE_RIGHT; break;
+                    case 2: button = GAMEPAD_BUTTON_RIGHT_FACE_LEFT; break;
+                    case 3: button = GAMEPAD_BUTTON_RIGHT_FACE_UP; break;
+                    case 4: button = GAMEPAD_BUTTON_LEFT_TRIGGER_1; break;
+                    case 5: button = GAMEPAD_BUTTON_RIGHT_TRIGGER_1; break;
+                    case 6: button = GAMEPAD_BUTTON_LEFT_TRIGGER_2; break;
+                    case 7: button = GAMEPAD_BUTTON_RIGHT_TRIGGER_2; break;
+                    case 8: button = GAMEPAD_BUTTON_MIDDLE_LEFT; break;
+                    case 9: button = GAMEPAD_BUTTON_MIDDLE_RIGHT; break;
+                    case 10: button = GAMEPAD_BUTTON_LEFT_THUMB; break;
+                    case 11: button = GAMEPAD_BUTTON_RIGHT_THUMB; break;
+                    case 12: button = GAMEPAD_BUTTON_LEFT_FACE_UP; break;
+                    case 13: button = GAMEPAD_BUTTON_LEFT_FACE_DOWN; break;
+                    case 14: button = GAMEPAD_BUTTON_LEFT_FACE_LEFT; break;
+                    case 15: button = GAMEPAD_BUTTON_LEFT_FACE_RIGHT; break;
+                    default: break;
+                    }
+
+                    if (button != -1)   // Check for valid button
+                    {
+                        if (gamepadState.digitalButton[j] == 1)
+                        {
+                            CORE.Input.Gamepad.currentButtonState[i][button] = 1;
+                            CORE.Input.Gamepad.lastButtonPressed = button;
+                        }
+                        else CORE.Input.Gamepad.currentButtonState[i][button] = 0;
+                    }
+
+                    //TRACELOGD("INPUT: Gamepad %d, button %d: Digital: %d, Analog: %g", gamepadState.index, j, gamepadState.digitalButton[j], gamepadState.analogButton[j]);
+                }
+
+                // Register axis data for every connected gamepad
+                for (int j = 0; (j < gamepadState.numAxes) && (j < MAX_GAMEPAD_AXIS); j++)
+                {
+                    CORE.Input.Gamepad.axisState[i][j] = gamepadState.axis[j];
+                }
+
+                CORE.Input.Gamepad.axisCount = gamepadState.numAxes;
+            }
+        }
+    }
+
+    version(none) { // #if defined(PLATFORM_ANDROID)
+        // Register previous keys states
+        // NOTE: Android supports up to 260 keys
+        for (int i = 0; i < 260; i++) CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
+
+        // Android ALooper_pollAll() variables
+        int pollResult = 0;
+        int pollEvents = 0;
+
+        // Poll Events (registered events)
+        // NOTE: Activity is paused if not enabled (CORE.Android.appEnabled)
+        while ((pollResult = ALooper_pollAll(CORE.Android.appEnabled? 0 : -1, null, &pollEvents, cast(void**)&CORE.Android.source)) >= 0)
+        {
+            // Process this event
+            if (CORE.Android.source != null) CORE.Android.source.process(CORE.Android.app, CORE.Android.source);
+
+            // NOTE: Never close window, native activity is controlled by the system!
+            if (CORE.Android.app.destroyRequested != 0)
+            {
+                //CORE.Window.shouldClose = true;
+                //ANativeActivity_finish(CORE.Android.app.activity);
+            }
+        }
+    }
+
+    version(none) {  // #if (defined(PLATFORM_RPI) || defined(PLATFORM_DRM)) && defined(SUPPORT_SSH_KEYBOARD_RPI)
+        // NOTE: Keyboard reading could be done using input_event(s) or just read from stdin, both methods are used here.
+        // stdin reading is still used for legacy purposes, it allows keyboard input trough SSH console
+
+        if (!CORE.Input.Keyboard.evtMode) ProcessKeyboard();
+
+        // NOTE: Mouse input events polling is done asynchronously in another pthread - EventThread()
+        // NOTE: Gamepad (Joystick) input events polling is done asynchonously in another pthread - GamepadThread()
+    }
 }

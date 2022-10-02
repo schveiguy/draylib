@@ -486,8 +486,12 @@ typedef struct CoreData {
 extern CoreData *_get_CORE(); // use from D side
 #define CORE (*_get_CORE())
 
-static char **dirFilesPath = NULL;          // Store directory files paths as strings
-static int dirFileCount = 0;                // Count directory files strings
+//static char **dirFilesPath = NULL;          // Store directory files paths as strings
+extern char ***_get_dirFilesPath();
+#define get_dirFilesPath (*_get_dirFilesPath())
+//static int dirFileCount = 0;                // Count directory files strings
+extern int *_get_dirFileCount();
+#define dirFileCount (*_get_dirFileCount())
 
 #if defined(SUPPORT_SCREEN_CAPTURE)
 //static int screenshotCounter = 0;           // Screenshots counter
@@ -2709,7 +2713,6 @@ void SetRandomSeed(unsigned int seed)
 {
     srand(seed);
 }
-#endif
 
 // Check if the file exists
 bool FileExists(const char *fileName)
@@ -3711,7 +3714,6 @@ int GetTouchPointCount(void)
 // NOTE: width and height represent the screen (framebuffer) desired size, not actual display size
 // If width or height are 0, default display size will be used for framebuffer size
 // NOTE: returns false in case graphic device could not be created
-#if 0 // in D
 bool InitGraphicsDevice(int width, int height)
 {
     CORE.Window.screen.width = width;            // User desired width
@@ -4594,7 +4596,6 @@ void SetupViewport(int width, int height)
 
     CORE.Time.previous = GetTime();     // Get time as double
 }
-#endif
 
 // Wait for some milliseconds (stop program execution)
 // NOTE: Sleep() granularity could be around 10 ms, it means, Sleep() could
@@ -4972,6 +4973,7 @@ void PollInputEvents(void)
     // NOTE: Gamepad (Joystick) input events polling is done asynchonously in another pthread - GamepadThread()
 #endif
 }
+#endif
 
 #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB)
 #if 0 // in D
@@ -5050,19 +5052,15 @@ void WindowSizeCallback(GLFWwindow *window, int width, int height)
 
     // NOTE: Postprocessing texture is not scaled to new size
 }
-#endif
 
 // GLFW3 WindowIconify Callback, runs when window is minimized/restored
-#if 0 // in D
 static void WindowIconifyCallback(GLFWwindow *window, int iconified)
 {
     if (iconified) CORE.Window.flags |= FLAG_WINDOW_MINIMIZED;  // The window was iconified
     else CORE.Window.flags &= ~FLAG_WINDOW_MINIMIZED;           // The window was restored
 }
-#endif
 
 #if !defined(PLATFORM_WEB)
-#if 0 // in D
 // GLFW3 WindowMaximize Callback, runs when window is maximized/restored
 void WindowMaximizeCallback(GLFWwindow *window, int maximized)
 {
@@ -5070,9 +5068,7 @@ void WindowMaximizeCallback(GLFWwindow *window, int maximized)
     else CORE.Window.flags &= ~FLAG_WINDOW_MAXIMIZED;           // The window was restored
 }
 #endif
-#endif
 
-#if 0 // in D
 // GLFW3 WindowFocus Callback, runs when window get/lose focus
 static void WindowFocusCallback(GLFWwindow *window, int focused)
 {
@@ -5258,9 +5254,7 @@ static void CursorEnterCallback(GLFWwindow *window, int enter)
     if (enter == true) CORE.Input.Mouse.cursorOnScreen = true;
     else CORE.Input.Mouse.cursorOnScreen = false;
 }
-#endif
 
-#if 0 // in D
 // GLFW3 Window Drop Callback, runs when drop files into window
 // NOTE: Paths are stored in dynamic memory for further retrieval
 // Everytime new files are dropped, old ones are discarded
