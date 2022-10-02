@@ -869,7 +869,24 @@ float3 Vector3ToFloatV(Vector3 v)
 
 // Cache the matrix values (speed optimization)
 float MatrixDeterminant(Matrix mat)
+{
+    float result = 0.0f;
 
+    // Cache the matrix values (speed optimization)
+    float a00 = mat.m0, a01 = mat.m1, a02 = mat.m2, a03 = mat.m3;
+    float a10 = mat.m4, a11 = mat.m5, a12 = mat.m6, a13 = mat.m7;
+    float a20 = mat.m8, a21 = mat.m9, a22 = mat.m10, a23 = mat.m11;
+    float a30 = mat.m12, a31 = mat.m13, a32 = mat.m14, a33 = mat.m15;
+
+    result = a30 * a21 * a12 * a03 - a20 * a31 * a12 * a03 - a30 * a11 * a22 * a03 + a10 * a31 * a22 * a03 +
+             a20 * a11 * a32 * a03 - a10 * a21 * a32 * a03 - a30 * a21 * a02 * a13 + a20 * a31 * a02 * a13 +
+             a30 * a01 * a22 * a13 - a00 * a31 * a22 * a13 - a20 * a01 * a32 * a13 + a00 * a21 * a32 * a13 +
+             a30 * a11 * a02 * a23 - a10 * a31 * a02 * a23 - a30 * a01 * a12 * a23 + a00 * a31 * a12 * a23 +
+             a10 * a01 * a32 * a23 - a00 * a11 * a32 * a23 - a20 * a11 * a02 * a33 + a10 * a21 * a02 * a33 +
+             a20 * a01 * a12 * a33 - a00 * a21 * a12 * a33 - a10 * a01 * a22 * a33 + a00 * a11 * a22 * a33;
+
+    return result;
+}
 // Get the trace of the matrix (sum of the values along the diagonal)
 float MatrixTrace(Matrix mat)
 
