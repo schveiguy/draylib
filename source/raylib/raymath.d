@@ -1541,7 +1541,24 @@ Quaternion QuaternionNormalize(Quaternion q)
 }
 // Invert provided quaternion
 Quaternion QuaternionInvert(Quaternion q)
+{
+    Quaternion result = q;
 
+    float length = sqrtf(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+    float lengthSq = length * length;
+
+    if (lengthSq != 0.0)
+    {
+        float invLength = 1.0f / lengthSq;
+
+        result.x *= -invLength;
+        result.y *= -invLength;
+        result.z *= -invLength;
+        result.w *= invLength;
+    }
+
+    return result;
+}
 // Calculate two quaternion multiplication
 Quaternion QuaternionMultiply(Quaternion q1, Quaternion q2)
 
