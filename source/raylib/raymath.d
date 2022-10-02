@@ -1899,7 +1899,27 @@ Quaternion QuaternionFromEuler(float pitch, float yaw, float roll)
 
 // Yaw (z-axis rotation)
 Vector3 QuaternionToEuler(Quaternion q)
+{
+    auto result = Vector3(0, 0, 0);
 
+    // Roll (x-axis rotation)
+    float x0 = 2.0f * (q.w * q.x + q.y * q.z);
+    float x1 = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
+    result.x = atan2f(x0, x1);
+
+    // Pitch (y-axis rotation)
+    float y0 = 2.0f * (q.w * q.y - q.z * q.x);
+    y0 = y0 > 1.0f ? 1.0f : y0;
+    y0 = y0 < -1.0f ? -1.0f : y0;
+    result.y = asinf(y0);
+
+    // Yaw (z-axis rotation)
+    float z0 = 2.0f * (q.w * q.z + q.x * q.y);
+    float z1 = 1.0f - 2.0f * (q.y * q.y + q.z * q.z);
+    result.z = atan2f(z0, z1);
+
+    return result;
+}
 // Transform a quaternion given a transformation matrix
 Quaternion QuaternionTransform(Quaternion q, Matrix mat)
 
