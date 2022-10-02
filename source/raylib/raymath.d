@@ -605,9 +605,9 @@ void Vector3OrthoNormalize(Vector3* v1, Vector3* v2)
     length = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
     if (length == 0.0f) length = 1.0f;
     ilength = 1.0f/length;
-    v1->x *= ilength;
-    v1->y *= ilength;
-    v1->z *= ilength;
+    v1.x *= ilength;
+    v1.y *= ilength;
+    v1.z *= ilength;
 
     // Vector3CrossProduct(*v1, *v2)
     Vector3 vn1 = { v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x };
