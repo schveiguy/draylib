@@ -645,6 +645,15 @@ Vector3 Vector3Transform(Vector3 v, Matrix mat)
 
 // Transform a vector by quaternion rotation
 Vector3 Vector3RotateByQuaternion(Vector3 v, Quaternion q)
+{
+    auto result = Vector3(0, 0, 0);
+
+    result.x = v.x * (q.x * q.x + q.w * q.w - q.y * q.y - q.z * q.z) + v.y * (2 * q.x * q.y - 2 * q.w * q.z) + v.z * (2 * q.x * q.z + 2 * q.w * q.y);
+    result.y = v.x * (2 * q.w * q.z + 2 * q.x * q.y) + v.y * (q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z) + v.z * (-2 * q.w * q.x + 2 * q.y * q.z);
+    result.z = v.x * (-2 * q.w * q.y + 2 * q.x * q.z) + v.y * (2 * q.w * q.x + 2 * q.y * q.z)+ v.z * (q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z);
+
+    return result;
+}
 
 // Calculate linear interpolation between two vectors
 Vector3 Vector3Lerp(Vector3 v1, Vector3 v2, float amount)
