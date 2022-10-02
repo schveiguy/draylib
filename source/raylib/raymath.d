@@ -852,7 +852,15 @@ Vector3 Vector3Unproject(Vector3 source, Matrix projection, Matrix view)
 
 // Get Vector3 as float array
 float3 Vector3ToFloatV(Vector3 v)
+{
+    float3 buffer;
 
+    buffer.v[0] = v.x;
+    buffer.v[1] = v.y;
+    buffer.v[2] = v.z;
+
+    return buffer;
+}
 //----------------------------------------------------------------------------------
 // Module Functions Definition - Matrix math
 //----------------------------------------------------------------------------------
