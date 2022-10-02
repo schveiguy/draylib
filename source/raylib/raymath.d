@@ -1192,7 +1192,22 @@ Matrix MatrixRotateY(float angle)
 
 // MatrixIdentity()
 Matrix MatrixRotateZ(float angle)
+{
+    Matrix result = { 1.0f, 0.0f, 0.0f, 0.0f,
+                      0.0f, 1.0f, 0.0f, 0.0f,
+                      0.0f, 0.0f, 1.0f, 0.0f,
+                      0.0f, 0.0f, 0.0f, 1.0f }; // MatrixIdentity()
 
+    float cosres = cosf(angle);
+    float sinres = sinf(angle);
+
+    result.m0 = cosres;
+    result.m1 = -sinres;
+    result.m4 = sinres;
+    result.m5 = cosres;
+
+    return result;
+}
 // Get xyz-rotation matrix (angles in radians)
 
 // MatrixIdentity()
