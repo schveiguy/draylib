@@ -657,7 +657,15 @@ Vector3 Vector3RotateByQuaternion(Vector3 v, Quaternion q)
 
 // Calculate linear interpolation between two vectors
 Vector3 Vector3Lerp(Vector3 v1, Vector3 v2, float amount)
+{
+    auto result = Vector3(0, 0, 0);
 
+    result.x = v1.x + amount * (v2.x - v1.x);
+    result.y = v1.y + amount * (v2.y - v1.y);
+    result.z = v1.z + amount * (v2.z - v1.z);
+
+    return result;
+}
 // Calculate reflected vector to normal
 
 // I is the original vector
