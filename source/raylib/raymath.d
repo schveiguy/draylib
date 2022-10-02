@@ -672,6 +672,21 @@ Vector3 Vector3Lerp(Vector3 v1, Vector3 v2, float amount)
 // N is the normal of the incident plane
 // R = I - (2*N*(DotProduct[I, N]))
 Vector3 Vector3Reflect(Vector3 v, Vector3 normal)
+{
+   auto result = Vector3(0, 0, 0);
+
+    // I is the original vector
+    // N is the normal of the incident plane
+    // R = I - (2*N*(DotProduct[I, N]))
+
+    float dotProduct = v.x * normal.x + v.y * normal.y + v.z * normal.z;
+
+    result.x = v.x - (2.0f * normal.x) * dotProduct;
+    result.y = v.y - (2.0f * normal.y) * dotProduct;
+    result.z = v.z - (2.0f * normal.z) * dotProduct;
+
+    return result;
+}
 
 // Get min value for each pair of components
 Vector3 Vector3Min(Vector3 v1, Vector3 v2)
