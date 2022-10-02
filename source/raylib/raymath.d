@@ -1713,7 +1713,39 @@ Quaternion QuaternionFromVector3ToVector3(Vector3 from, Vector3 to)
 }
 // Get a quaternion for a given rotation matrix
 Quaternion QuaternionFromMatrix(Matrix mat)
+{
+    auto result = Vector4(0, 0, 0, 0);
 
+    if (mat.m0 > mat.m5 && mat.m0 > mat.m10)
+    {
+        float s = sqrtf(1.0f + mat.m0 - mat.m5 - mat.m10) * 2;
+
+        result.x = 0.25f * s;
+        result.y = (mat.m4 + mat.m1) / s;
+        result.z = (mat.m2 + mat.m8) / s;
+        result.w = (mat.m9 - mat.m6) / s;
+    }
+
+    else if (mat.m5 > mat.m10)
+    {
+        float s = sqrtf(1.0f + mat.m5 - mat.m0 - mat.m10) * 2;
+        result.x = (mat.m4 + mat.m1) / s;
+        result.y = 0.25f * s;
+        result.z = (mat.m9 + mat.m6) / s;
+        result.w = (mat.m2 - mat.m8) / s;
+    }
+
+    else
+    {
+        float s = sqrtf(1.0f + mat.m10 - mat.m0 - mat.m5) * 2;
+        result.x = (mat.m2 + mat.m8) / s;
+        result.y = (mat.m9 + mat.m6) / s;
+        result.z = 0.25f * s;
+        result.w = (mat.m4 - mat.m1) / s;
+    }
+
+    return result;
+}
 // Get a matrix for a given quaternion
 
 // MatrixIdentity()
