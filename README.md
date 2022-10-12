@@ -12,7 +12,7 @@ All `#ifdef` for platforms will be changed to either `version(none)` or `version
 
 ## Building
 
-To build, first use the makefile in the `raylib` directory, which contains the original C code.
+To build, first use the makefile in the `raylibc` directory, which contains the original C code, with all pieces that are ported to D commented out.
 
 Then build using dub. This produces libdraylib.a. This is *almost* a drop-in replacement for libraylib.a, but we also are depending on BindBC_GLFW. Therefore, you need to link this library in addition to libdraylib.a.
 
@@ -30,7 +30,17 @@ TODO: make this work better.
 ## Port status
 
 `raylib.h`, `config.h`, `raymath.h`, `rlgl.h` have all been converted automatically using dstep to the `source/raylib` package (note that `raylib.h` is converted to `raylib/package.d`).
-`raylib/rcore.d` will contain the ported `rcore.c` file. `rcore.c` will slowly be have all its functions removed as they are implemented in `rcore.d`. After `rcore.c` is eliminated, we will work on the next file.
+`raylib/rcore.d` contains the ported `rcore.c` file. `rcore.c` still exists to
+include some of the external C libraries that have not yet been ported.
+
+## Using ctod
+
+A newly published tool by Dennis Korpel,
+[ctod](https://github.com/dkorpel/ctod), is now being used to start each port.
+In fact, we are eliminating all uses of dstep, and our plan of porting all C
+files is possible now.
+
+Any D files in `raylib/external` are ports of the C headers using this tool. `rcore.d` was completed by hand copy/pasting and porting. All further modules (except `raymath.d`) will be started with this new tool, as it saves hours/days of time fixing most of the common C to D syntax differences.
 
 ## Game plan
 

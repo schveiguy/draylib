@@ -195,7 +195,7 @@ struct sinfl_gen {
 }
 private int sinfl_build_tbl(sinfl_gen* gen, uint* tbl, int tbl_bits, const(int)* cnt) {
   int tbl_end = 0;
-  while (!(() => gen.cnt = cnt[gen.len])()) {
+  while ((gen.cnt = cnt[gen.len]) == 0) {
     ++gen.len;
   }
   tbl_end = 1 << gen.len;
@@ -218,7 +218,7 @@ private int sinfl_build_tbl(sinfl_gen* gen, uint* tbl, int tbl_bits, const(int)*
         memcpy(&tbl[tbl_end], tbl, cast(size_t)tbl_end * typeof(tbl[0]).sizeof);
         tbl_end <<= 1;
       }
-    } while (!(() => gen.cnt = cnt[gen.len])());
+    } while ((gen.cnt = cnt[gen.len]) == 0);
   }
   return 0;
 }
