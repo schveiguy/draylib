@@ -472,6 +472,7 @@ endif
 
 # Default target entry
 all: raylib
+objs: $(OBJS)
 
 # Compile raylib library
 # NOTE: Release directory is created if not exist
