@@ -1,5 +1,6 @@
 module raylib.external.sinfl;
 @nogc nothrow extern(C):
+package(raylib): // for internal use only
 
 /*
 # Small Deflate

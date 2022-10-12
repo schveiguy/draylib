@@ -1,5 +1,6 @@
 module raylib.external.sdefl;
 @nogc nothrow extern(C):
+package(raylib): // for internal use only
 
 import core.stdc.config: c_long, c_ulong;
 /*# Small Deflate
