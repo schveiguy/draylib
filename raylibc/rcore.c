@@ -137,6 +137,7 @@
     #include "rcamera.h"             // Camera system functionality
 #endif
 
+#if 0 // now in D
 #if defined(SUPPORT_GIF_RECORDING)
     #define MSF_GIF_MALLOC(contextPointer, newSize) RL_MALLOC(newSize)
     #define MSF_GIF_REALLOC(contextPointer, oldMemory, oldSize, newSize) RL_REALLOC(oldMemory, newSize)
@@ -153,6 +154,7 @@
 
     #define SDEFL_IMPLEMENTATION
     #include "external/sdefl.h"     // Deflate (RFC 1951) compressor
+#endif
 #endif
 
 #if (defined(__linux__) || defined(PLATFORM_WEB)) && _POSIX_C_SOURCE < 199309L
@@ -499,6 +501,7 @@ extern int *_get_screenshotCounter(); // use from D side
 #define screenshotCounter (*_get_screenshotCounter())
 #endif
 
+#if 0 // now fully in D
 #if defined(SUPPORT_GIF_RECORDING)
 //static int gifFrameCounter = 0;            // GIF frames counter
 extern int *_get_gifFrameCounter();           // use from D side
@@ -509,6 +512,7 @@ extern int *_get_gifRecording();           // use from D side
 //static MsfGifState gifState = { 0 };        // MSGIF context state
 extern MsfGifState* _get_gifState();        // MSGIF context state
 #define gifState (*_get_gifState())
+#endif
 #endif
 
 #if defined(SUPPORT_EVENTS_AUTOMATION)

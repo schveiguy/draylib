@@ -133,7 +133,7 @@ endif
 
 # Define raylib release directory for compiled library.
 # RAYLIB_RELEASE_PATH points to provided binaries or your freshly built version
-RAYLIB_RELEASE_PATH 	?= $(RAYLIB_PATH)/raylib
+RAYLIB_RELEASE_PATH 	?= $(RAYLIB_PATH)/raylibc
 
 # EXAMPLE_RUNTIME_PATH embeds a custom runtime location of libraylib.so or other desired libraries
 # into each example binary compiled with RAYLIB_LIBTYPE=SHARED. It defaults to RAYLIB_RELEASE_PATH
@@ -238,7 +238,7 @@ endif
 
 # Define include paths for required headers
 # NOTE: Some external/extras libraries could be required (stb, physac, easings...)
-INCLUDE_PATHS = -I. -I$(RAYLIB_PATH)/raylib -I$(RAYLIB_PATH)/raylib/external -I$(RAYLIB_PATH)/raylib/extras
+INCLUDE_PATHS = -I. -I$(RAYLIB_PATH)/raylibc -I$(RAYLIB_PATH)/raylibc/external -I$(RAYLIB_PATH)/raylibc/extras
 
 # Define additional directories containing required header files
 ifeq ($(PLATFORM),PLATFORM_RPI)
