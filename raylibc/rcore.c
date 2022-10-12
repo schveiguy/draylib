@@ -151,8 +151,9 @@
     #define SINFL_NO_SIMD
     #include "external/sinfl.h"     // Deflate (RFC 1951) decompressor
 
-    #define SDEFL_IMPLEMENTATION
-    #include "external/sdefl.h"     // Deflate (RFC 1951) compressor
+    // in D now
+    //#define SDEFL_IMPLEMENTATION
+    //#include "external/sdefl.h"     // Deflate (RFC 1951) compressor
 #endif
 
 #if (defined(__linux__) || defined(PLATFORM_WEB)) && _POSIX_C_SOURCE < 199309L
