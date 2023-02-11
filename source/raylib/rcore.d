@@ -20,6 +20,7 @@ import core.stdc.stdio;
 version(Posix)
 {
     import core.sys.posix.sys.stat;
+    import core.sys.posix.time;
 }
 else version(Windows)
 {
