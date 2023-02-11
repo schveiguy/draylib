@@ -11,7 +11,6 @@ import raylib.external.sdefl;
 
 import core.stdc.stdlib;
 import core.stdc.math;
-import core.sys.posix.time;
 import core.stdc.string;
 import core.sys.posix.sys.time;
 import core.stdc.config;
