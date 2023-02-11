@@ -12,7 +12,6 @@ import raylib.external.sdefl;
 import core.stdc.stdlib;
 import core.stdc.math;
 import core.stdc.string;
-import core.sys.posix.sys.time;
 import core.stdc.config;
 import core.stdc.stdio;
 
@@ -20,6 +19,7 @@ import core.stdc.stdio;
 version(Posix)
 {
     import core.sys.posix.sys.stat;
+    import core.sys.posix.time;
 }
 else version(Windows)
 {
