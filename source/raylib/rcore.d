@@ -3535,7 +3535,7 @@ deprecated("Use std.file.exists instead.") bool DirectoryExists(const char *dirP
 }
 
 /// Get pointer to extension for a filename string (includes the dot: .png)
-const(char) *GetFileExtension(const char *fileName)
+deprecated("Use std.path.extension instead.") const(char) *GetFileExtension(const char *fileName)
 {
     const char *dot = strrchr(fileName, '.');
 
