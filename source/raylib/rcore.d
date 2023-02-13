@@ -3455,7 +3455,7 @@ void TakeScreenshot(const char *fileName)
 }
 
 /// Get a random value between min and max (both included)
-int GetRandomValue(int min, int max)
+deprecated("Use std.random.uniform instead.") int GetRandomValue(int min, int max)
 {
     if (min > max)
     {
