@@ -3553,7 +3553,7 @@ private const(char) *strprbrk(const(char)* s, const char *charset)
 }
 
 /// Get pointer to filename for a path string
-const(char) *GetFileName(const(char)* filePath)
+deprecated("Use std.path.stripExtension instead.") const(char) *GetFileName(const(char)* filePath)
 {
     const(char)* fileName = null;
     if (filePath != null) fileName = strprbrk(filePath, "\\/");
