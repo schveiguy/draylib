@@ -3468,7 +3468,7 @@ deprecated("Use std.random.uniform instead.") int GetRandomValue(int min, int ma
 }
 
 /// Set the seed for the random number generator
-void SetRandomSeed(uint seed)
+deprecated("Use std.random.Random instead.") void SetRandomSeed(uint seed)
 {
     srand(seed);
 }
