@@ -3474,7 +3474,7 @@ deprecated("Use std.random.Random instead.") void SetRandomSeed(uint seed)
 }
 
 /// Check if the file exists
-bool FileExists(const char *fileName)
+deprecated("Use std.file.exists instead.") bool FileExists(const char *fileName)
 {
     bool result = false;
 
