@@ -3520,7 +3520,7 @@ bool IsFileExtension(const char *fileName, const char *ext)
 }
 
 /// Check if a directory path exists
-bool DirectoryExists(const char *dirPath)
+deprecated("Use std.file.exists instead.") bool DirectoryExists(const char *dirPath)
 {
     bool result = false;
     DIR *dir = opendir(dirPath);
