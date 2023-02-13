@@ -3564,7 +3564,7 @@ const(char) *GetFileName(const(char)* filePath)
 }
 
 /// Get filename string without extension (uses static string)
-const(char) *GetFileNameWithoutExt(const char *filePath)
+deprecated("Use std.path.stripExtension instead.") const(char) *GetFileNameWithoutExt(const char *filePath)
 {
     enum MAX_FILENAMEWITHOUTEXT_LENGTH = 128;
 
