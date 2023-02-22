@@ -3793,7 +3793,7 @@ deprecated("Use std.zlib.compress instead.") ubyte *CompressData(ubyte *data, in
 }
 
 /// Decompress data (DEFLATE algorythm)
-ubyte *DecompressData(ubyte *compData, int compDataLength, int *dataLength)
+deprecated("Use std.zlib.uncompress instead.") ubyte *DecompressData(ubyte *compData, int compDataLength, int *dataLength)
 {
     ubyte *data = null;
 
