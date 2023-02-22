@@ -1223,7 +1223,7 @@ private void SetupViewport(int width, int height)
         glfwGetWindowContentScale(CORE.Window.handle, &xScale, &yScale);
         rlViewport(cast(int)(CORE.Window.renderOffset.x/2*xScale), cast(int)(CORE.Window.renderOffset.y/2*yScale), cast(int)((CORE.Window.render.width)*xScale), cast(int)((CORE.Window.render.height)*yScale));
     }
-    else { 
+    else {
         rlViewport(CORE.Window.renderOffset.x/2, CORE.Window.renderOffset.y/2, CORE.Window.render.width, CORE.Window.render.height);
     }
 
@@ -2280,7 +2280,7 @@ private void KeyCallback(GLFWwindow *window, int key, int scancode, int action, 
         CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = key;
         CORE.Input.Keyboard.keyPressedQueueCount++;
     }
-    
+
     // Check the exit key to set close window
     if ((key == CORE.Input.Keyboard.exitKey) && (action == GLFW_PRESS)) glfwSetWindowShouldClose(CORE.Window.handle, GLFW_TRUE);
 
@@ -2359,7 +2359,7 @@ int GetMonitorCount()
         return monitorCount;
     }
 
-    else { 
+    else {
         return 1;
     }
 }
@@ -3659,7 +3659,7 @@ const(char) *GetPrevDirectoryPath(const char *dirPath)
 }
 
 //// Get current working directory
-const(char) *GetWorkingDirectory()
+deprecated("Use std.file.getcwd instead.") const(char) *GetWorkingDirectory()
 {
     static char[MAX_FILEPATH_LENGTH] currentDir = 0;
     memset(currentDir.ptr, 0, MAX_FILEPATH_LENGTH);
@@ -4638,7 +4638,7 @@ void PollInputEvents()
 
     // Register previous touch states
     for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
-    
+
     // Reset touch positions
     // TODO: It resets on PLATFORM_WEB the mouse position and not filled again until a move-event,
     // so, if mouse is not moved it returns a (0, 0) position... this behaviour should be reviewed!
