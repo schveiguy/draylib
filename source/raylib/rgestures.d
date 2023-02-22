@@ -46,7 +46,7 @@ module raylib.rgestures;
 
 extern (C) @nogc nothrow:
 
-enum PI = 3.14159265358979323846;
+deprecated("Use std.math.PI instead.") enum PI = 3.14159265358979323846;
 
 //----------------------------------------------------------------------------------
 // Defines and Macros
