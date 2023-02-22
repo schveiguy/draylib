@@ -96,7 +96,7 @@ enum RAYLIB_VERSION = "4.0";
 // Some basic Defines
 //----------------------------------------------------------------------------------
 
-enum PI = 3.14159265358979323846f;
+deprecated("Use std.math.PI instead.") enum PI = 3.14159265358979323846f;
 
 enum DEG2RAD = PI / 180.0f;
 
