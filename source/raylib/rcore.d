@@ -3758,7 +3758,7 @@ void ClearDroppedFiles()
 }
 
 /// Get file modification time (last write time)
-c_long GetFileModTime(const char *fileName)
+deprecated("Use std.file.timeLastModified instead.") c_long GetFileModTime(const char *fileName)
 {
     stat_t result;
 
