@@ -3815,7 +3815,7 @@ deprecated("Use std.zlib.uncompress instead.") ubyte *DecompressData(ubyte *comp
 }
 
 /// Encode data to Base64 string
-char *EncodeDataBase64(const ubyte *data, int dataLength, int *outputLength)
+deprecated("Use std.base64.encode instead") char *EncodeDataBase64(const ubyte *data, int dataLength, int *outputLength)
 {
     static const ubyte[] base64encodeTable = [
         'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
