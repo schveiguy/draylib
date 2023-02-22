@@ -3721,7 +3721,7 @@ void ClearDirectoryFiles()
 }
 
 /// Change working directory, returns true on success
-bool ChangeDirectory(const char *dir)
+deprecated("Use std.file.chdir instead.") bool ChangeDirectory(const char *dir)
 {
     int result = CHDIR(dir);
 
