@@ -3851,7 +3851,7 @@ deprecated("Use std.base64.encode instead") char *EncodeDataBase64(const ubyte *
 }
 
 /// Decode Base64 string data
-ubyte *DecodeDataBase64(ubyte *data, int *outputLength)
+deprecated("Use std.base64.decode instead") ubyte *DecodeDataBase64(ubyte *data, int *outputLength)
 {
     static const ubyte[] base64decodeTable = [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
