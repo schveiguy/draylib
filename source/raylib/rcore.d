@@ -3672,7 +3672,7 @@ deprecated("Use std.file.getcwd instead.") const(char) *GetWorkingDirectory()
 
 /// Get filenames in a directory path (max 512 files)
 /// NOTE: Files count is returned by parameters pointer
-char **GetDirectoryFiles(const char *dirPath, int *fileCount)
+deprecated("Use std.file.dirEntries instead.") char **GetDirectoryFiles(const char *dirPath, int *fileCount)
 {
 
     ClearDirectoryFiles();
