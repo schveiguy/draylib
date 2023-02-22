@@ -3773,7 +3773,7 @@ deprecated("Use std.file.timeLastModified instead.") c_long GetFileModTime(const
 }
 
 /// Compress data (DEFLATE algorythm)
-ubyte *CompressData(ubyte *data, int dataLength, int *compDataLength)
+deprecated("Use std.zlib.compress instead.") ubyte *CompressData(ubyte *data, int dataLength, int *compDataLength)
 {
     enum COMPRESSION_QUALITY_DEFLATE = 8;
 
