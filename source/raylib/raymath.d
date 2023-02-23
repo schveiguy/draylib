@@ -167,7 +167,7 @@ struct float16
 //----------------------------------------------------------------------------------
 
 // Clamp float value
-float Clamp(float value, float min, float max)
+deprecated("Use std.algorithm.comparison.clamp instead.") float Clamp(float value, float min, float max)
 {
     float result = value < min ? min : value;
 

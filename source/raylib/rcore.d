@@ -1223,7 +1223,7 @@ private void SetupViewport(int width, int height)
         glfwGetWindowContentScale(CORE.Window.handle, &xScale, &yScale);
         rlViewport(cast(int)(CORE.Window.renderOffset.x/2*xScale), cast(int)(CORE.Window.renderOffset.y/2*yScale), cast(int)((CORE.Window.render.width)*xScale), cast(int)((CORE.Window.render.height)*yScale));
     }
-    else { 
+    else {
         rlViewport(CORE.Window.renderOffset.x/2, CORE.Window.renderOffset.y/2, CORE.Window.render.width, CORE.Window.render.height);
     }
 
@@ -2280,7 +2280,7 @@ private void KeyCallback(GLFWwindow *window, int key, int scancode, int action, 
         CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = key;
         CORE.Input.Keyboard.keyPressedQueueCount++;
     }
-    
+
     // Check the exit key to set close window
     if ((key == CORE.Input.Keyboard.exitKey) && (action == GLFW_PRESS)) glfwSetWindowShouldClose(CORE.Window.handle, GLFW_TRUE);
 
@@ -2359,7 +2359,7 @@ int GetMonitorCount()
         return monitorCount;
     }
 
-    else { 
+    else {
         return 1;
     }
 }
@@ -3455,7 +3455,7 @@ void TakeScreenshot(const char *fileName)
 }
 
 /// Get a random value between min and max (both included)
-int GetRandomValue(int min, int max)
+deprecated("Use std.random.uniform instead.") int GetRandomValue(int min, int max)
 {
     if (min > max)
     {
@@ -3468,13 +3468,13 @@ int GetRandomValue(int min, int max)
 }
 
 /// Set the seed for the random number generator
-void SetRandomSeed(uint seed)
+deprecated("Use std.random.Random instead.") void SetRandomSeed(uint seed)
 {
     srand(seed);
 }
 
 /// Check if the file exists
-bool FileExists(const char *fileName)
+deprecated("Use std.file.exists instead.") bool FileExists(const char *fileName)
 {
     bool result = false;
 
@@ -3520,7 +3520,7 @@ bool IsFileExtension(const char *fileName, const char *ext)
 }
 
 /// Check if a directory path exists
-bool DirectoryExists(const char *dirPath)
+deprecated("Use std.file.exists instead.") bool DirectoryExists(const char *dirPath)
 {
     bool result = false;
     DIR *dir = opendir(dirPath);
@@ -3535,7 +3535,7 @@ bool DirectoryExists(const char *dirPath)
 }
 
 /// Get pointer to extension for a filename string (includes the dot: .png)
-const(char) *GetFileExtension(const char *fileName)
+deprecated("Use std.path.extension instead.") const(char) *GetFileExtension(const char *fileName)
 {
     const char *dot = strrchr(fileName, '.');
 
@@ -3553,7 +3553,7 @@ private const(char) *strprbrk(const(char)* s, const char *charset)
 }
 
 /// Get pointer to filename for a path string
-const(char) *GetFileName(const(char)* filePath)
+deprecated("Use std.path.withExtension instead.") const(char) *GetFileName(const(char)* filePath)
 {
     const(char)* fileName = null;
     if (filePath != null) fileName = strprbrk(filePath, "\\/");
@@ -3564,7 +3564,7 @@ const(char) *GetFileName(const(char)* filePath)
 }
 
 /// Get filename string without extension (uses static string)
-const(char) *GetFileNameWithoutExt(const char *filePath)
+deprecated("Use std.path.stripExtension instead.") const(char) *GetFileNameWithoutExt(const char *filePath)
 {
     enum MAX_FILENAMEWITHOUTEXT_LENGTH = 128;
 
@@ -3659,7 +3659,7 @@ const(char) *GetPrevDirectoryPath(const char *dirPath)
 }
 
 //// Get current working directory
-const(char) *GetWorkingDirectory()
+deprecated("Use std.file.getcwd instead.") const(char) *GetWorkingDirectory()
 {
     static char[MAX_FILEPATH_LENGTH] currentDir = 0;
     memset(currentDir.ptr, 0, MAX_FILEPATH_LENGTH);
@@ -3672,7 +3672,7 @@ const(char) *GetWorkingDirectory()
 
 /// Get filenames in a directory path (max 512 files)
 /// NOTE: Files count is returned by parameters pointer
-char **GetDirectoryFiles(const char *dirPath, int *fileCount)
+deprecated("Use std.file.dirEntries instead.") char **GetDirectoryFiles(const char *dirPath, int *fileCount)
 {
 
     ClearDirectoryFiles();
@@ -3721,7 +3721,7 @@ void ClearDirectoryFiles()
 }
 
 /// Change working directory, returns true on success
-bool ChangeDirectory(const char *dir)
+deprecated("Use std.file.chdir instead.") bool ChangeDirectory(const char *dir)
 {
     int result = CHDIR(dir);
 
@@ -3758,7 +3758,7 @@ void ClearDroppedFiles()
 }
 
 /// Get file modification time (last write time)
-c_long GetFileModTime(const char *fileName)
+deprecated("Use std.file.timeLastModified instead.") c_long GetFileModTime(const char *fileName)
 {
     stat_t result;
 
@@ -3773,7 +3773,7 @@ c_long GetFileModTime(const char *fileName)
 }
 
 /// Compress data (DEFLATE algorythm)
-ubyte *CompressData(ubyte *data, int dataLength, int *compDataLength)
+deprecated("Use std.zlib.compress instead.") ubyte *CompressData(ubyte *data, int dataLength, int *compDataLength)
 {
     enum COMPRESSION_QUALITY_DEFLATE = 8;
 
@@ -3793,7 +3793,7 @@ ubyte *CompressData(ubyte *data, int dataLength, int *compDataLength)
 }
 
 /// Decompress data (DEFLATE algorythm)
-ubyte *DecompressData(ubyte *compData, int compDataLength, int *dataLength)
+deprecated("Use std.zlib.uncompress instead.") ubyte *DecompressData(ubyte *compData, int compDataLength, int *dataLength)
 {
     ubyte *data = null;
 
@@ -3815,7 +3815,7 @@ ubyte *DecompressData(ubyte *compData, int compDataLength, int *dataLength)
 }
 
 /// Encode data to Base64 string
-char *EncodeDataBase64(const ubyte *data, int dataLength, int *outputLength)
+deprecated("Use std.base64.encode instead") char *EncodeDataBase64(const ubyte *data, int dataLength, int *outputLength)
 {
     static const ubyte[] base64encodeTable = [
         'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
@@ -3851,7 +3851,7 @@ char *EncodeDataBase64(const ubyte *data, int dataLength, int *outputLength)
 }
 
 /// Decode Base64 string data
-ubyte *DecodeDataBase64(ubyte *data, int *outputLength)
+deprecated("Use std.base64.decode instead") ubyte *DecodeDataBase64(ubyte *data, int *outputLength)
 {
     static const ubyte[] base64decodeTable = [
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -4638,7 +4638,7 @@ void PollInputEvents()
 
     // Register previous touch states
     for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
-    
+
     // Reset touch positions
     // TODO: It resets on PLATFORM_WEB the mouse position and not filled again until a move-event,
     // so, if mouse is not moved it returns a (0, 0) position... this behaviour should be reviewed!
