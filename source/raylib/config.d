@@ -138,17 +138,18 @@ enum SUPPORT_QUADS_DRAW_MODE = 1;
 //------------------------------------------------------------------------------------
 // Selecte desired fileformats to be supported for image data loading
 enum SUPPORT_FILEFORMAT_PNG = 1;
-//#define SUPPORT_FILEFORMAT_BMP      1
-//#define SUPPORT_FILEFORMAT_TGA      1
-//#define SUPPORT_FILEFORMAT_JPG      1
+enum SUPPORT_FILEFORMAT_BMP = 0;
+enum SUPPORT_FILEFORMAT_TGA = 0;
+enum SUPPORT_FILEFORMAT_JPG = 0;
 enum SUPPORT_FILEFORMAT_GIF = 1;
-//#define SUPPORT_FILEFORMAT_PSD      1
+enum SUPPORT_FILEFORMAT_PSD = 0;
 enum SUPPORT_FILEFORMAT_DDS = 1;
 enum SUPPORT_FILEFORMAT_HDR = 1;
-//#define SUPPORT_FILEFORMAT_KTX      1
-//#define SUPPORT_FILEFORMAT_ASTC     1
-//#define SUPPORT_FILEFORMAT_PKM      1
-//#define SUPPORT_FILEFORMAT_PVR      1
+enum SUPPORT_FILEFORMAT_KTX = 0;
+enum SUPPORT_FILEFORMAT_ASTC = 0;
+enum SUPPORT_FILEFORMAT_PKM = 0;
+enum SUPPORT_FILEFORMAT_PVR = 0;
+enum SUPPORT_FILEFORMAT_PIC = 0;
 
 // Support image export functionality (.png, .bmp, .tga, .jpg)
 enum SUPPORT_IMAGE_EXPORT = 1;

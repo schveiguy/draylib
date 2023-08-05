@@ -17,7 +17,7 @@
         "buildOptions" : [ "betterC" ],
 	"extraDependencyFiles": [ "raylib/*.o" ],
 	"dflags": [
-"raylibc/raudio.o", "raylibc/rglfw.o", "raylibc/rshapes.o", "raylibc/rtextures.o", "raylibc/rcore.o", "raylibc/rmodels.o", "raylibc/rtext.o", "raylibc/utils.o"
+"raylibc/raudio.o", "raylibc/rglfw.o", "raylibc/rshapes.o", "raylibc/rcore.o", "raylibc/rmodels.o", "raylibc/rtext.o", "raylibc/utils.o"
 	],
         "versions": [
             "GLFW_33"
