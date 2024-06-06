@@ -63,8 +63,9 @@ extern (C) @nogc nothrow:
 // Defines and Macros
 //----------------------------------------------------------------------------------
 
-public import raylib: PI, DEG2RAD, RAD2DEG, Vector2, Vector3, Vector4, Quaternion, Matrix;
+public import raylib: DEG2RAD, RAD2DEG, Vector2, Vector3, Vector4, Quaternion, Matrix;
 import core.stdc.math;
+import std.math: PI;
 /+enum PI = 3.14159265358979323846f;
 
 enum DEG2RAD = PI / 180.0f;
