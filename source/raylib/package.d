@@ -78,6 +78,7 @@
 module raylib;
 import core.stdc.config;
 import core.stdc.stdarg;
+import std.math;
 
 extern (C) @nogc nothrow:
 
@@ -98,9 +99,9 @@ enum RAYLIB_VERSION = "4.0";
 
 deprecated("Use std.math.PI instead.") enum PI = 3.14159265358979323846f;
 
-enum DEG2RAD = PI / 180.0f;
+enum DEG2RAD = std.math.PI / 180.0f;
 
-enum RAD2DEG = 180.0f / PI;
+enum RAD2DEG = 180.0f / std.math.PI;
 
 // NOTE: We set some defines with some data types declared by raylib
 // Other modules (raymath, rlgl) also require some of those types, so,
