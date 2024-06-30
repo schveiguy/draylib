@@ -9,12 +9,6 @@
 	"license": "Zlib",
 	"importPaths": ["source", "importc"],
 	"name": "draylib",
-        "dependencies" : {
-            "bindbc-glfw" : "~>1.0.0"
-        },
-        "subConfigurations" :  {
-            "bindbc-glfw" : "staticBC"
-        },
         "buildOptions" : [ "betterC" ],
 	"extraDependencyFiles": [ "raylib/*.o" ],
 	"dflags": [

@@ -649,7 +649,7 @@ extern "C" {
 #define GLFW_GAMEPAD_AXIS_RIGHT_Y       3
 #define GLFW_GAMEPAD_AXIS_LEFT_TRIGGER  4
 #define GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER 5
-#define GLFW_GAMEPAD_AXIS_LAST          GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER
+#define GLFW_GAMEPAD_AXIS_LAST          (GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER)
 /*! @} */
 
 /*! @defgroup errors Error codes
@@ -1259,7 +1259,7 @@ extern "C" {
 #define GLFW_X11_XCB_VULKAN_SURFACE 0x00052001
 /*! @} */
 
-#define GLFW_DONT_CARE              -1
+#define GLFW_DONT_CARE              (0 - 1)
 
 
 /*************************************************************************
