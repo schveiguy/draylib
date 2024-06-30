@@ -1,5 +1,5 @@
 module raylib.rcore;
-import bindbc.glfw;
+import glfw_import;
 import raylib;
 import raylib.config;
 import raylib.raymath;
@@ -36,7 +36,7 @@ alias RL_FREE = free;
 
 // for now, make everything extern(C) nothrow and @nogc
 
-extern(C) nothrow @nogc:
+extern(C): // nothrow @nogc:
 
 version(Windows)
 {
