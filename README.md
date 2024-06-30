@@ -12,53 +12,38 @@ All `#ifdef` for platforms will be changed to either `version(none)` or `version
 
 ## External libraries
 
-There are several external libraries that are "included" with the C version of raylib. Single file "header" libraries will be ported using cpptool and ctod (see descriptions below).
+There are several external libraries that are "included" with the C version of raylib. Most external API will be included via importC, and compiled with the native C compiler of the OS (which is required for importC anyway). There are some exceptions which were small and easy to port.
 
-The exception is glfw, which actually has a D ported dependency glfw-d (the project that begot ctod!). Eventually, the plan is to use that port instead of the glfw binding that we currently use, but it must support all things we use for that.
+It is important to note that we aren't *building* any C files with importC, we are just using it to *import* C files. To that end, all importC files are in an `importc` directory, and not included in the `source` directory.
 
 ## Building
 
 To build, first use the makefile in the `raylibc` directory, which contains the original C code, with all pieces that are ported to D commented out (or are built but ignored).
 
-Then build using dub. This produces libdraylib.a. This is *almost* a drop-in replacement for libraylib.a, but we also are depending on BindBC_GLFW. Therefore, you need to link this library in addition to libdraylib.a.
+Then build using dub. This produces libdraylib.a. This is a drop-in replacement for libraylib.a.
 
-draylib is currently built with `betterC`.
-
-I haven't yet figured out how to automate the build of libBindBC_GLFW.a. My current mechanism is:
-
-```console
-> DFLAGS="--d-version=GLFW_33" dub build bindbc-glfw --config=staticBC
-> cp ~/.dub/packages/bindbc-glfw-<version>/bindbc-glfw/lib/*.a .
-```
-
-TODO: make this work better.
+draylib is currently built with `betterC`. Once all files are ported, we will remove this restriction.
 
 ## Port status
 
-* `raylib.h`, `config.h`, `rlgl.h` have all been converted automatically using dstep to the `source/raylib` package (note that `raylib.h` is converted to `raylib/package.d`).
+* `raylib.h`, `config.h`, `rlgl.h`, `rgestures.h` have all been converted automatically using dstep to the `source/raylib` package (note that `raylib.h` is converted to `raylib/package.d`).
 * `raylib/rcore.d` contains the ported `rcore.c` file. `rcore.c` still exists to include some of the external C libraries that have not yet been ported.
 * `raylib/raymath.d` is completely ported and is not reliant on the C library to work.
-* `raylib/rtextures.d` is ported completely, and does not rely on C sources.
+* `raylib/rtextures.d` is ported completely, and relies on importC headers for `stb_image` to work (see `stb_image_import.c` in the importc directory)
 
 In the external directory, the following modules are included:
 
 * `msf_gif.d` - ported with ctod
 * `sdefl.d` - ported with ctod
 * `sinfl.d` - ported with ctod
-* `stb_image.d` - ported with cpptool and ctod on MacOS
-* `stb_image_resize.d` - ported with cpptool and ctod on MacOS
-* `stb_image_write.d` - ported with cpptool and ctod on MacOS
 
-## Porting tools
+## Ctod
 
-[cpptool](https://github.com/schveiguy/cpptool) is a new tool I wrote to expand desired macros without affecting the overall structure of the code. It is very much a work in progress, and there are almost no instructions. The tool utilizes the system C preprocessor to replace only the macro expansions desired before sending the code through ctod for a final port to D. This was inspired by an idea from Adam Ruppe. Because it's system specific, porting the other OS portions is problematic, and to be worked out later.
-
-A newly published tool by Dennis Korpel, [ctod](https://github.com/dkorpel/ctod), is used to do the final port from C to D. Raylib modules are reasonable enough and small enough that they can be done without cpptool, but all C sources are sent through ctod in the end. Originally, we thought we would still leave some compiled C code as dependencies, but now, we believe we can port all the C code to D.
+A tool by Dennis Korpel, [ctod](https://github.com/dkorpel/ctod), is used to port from C to D. Only C files that we plan to port are sent through here. Ones that are not necessary to port will be used via importC.
 
 ## Game plan
 
-1. Port raylib fully to D, so no C files exist for the library. The examples won't be ported, but there is an existing port of them by Danilo [here](https://github.com/D-a-n-i-l-o/raylib-d_examples). However, the C examples are used for testing while the port is in progress.
-2. Turn off betterC
-3. Migrate C API to be more D-like, leaving original raylib API as a wrapper.
-
-Most likely the external libraries will not be touched once porting is done.
+1. Port raylib main files to D, so no C files exist for the core library. The examples won't be ported, but there is an existing port of them by Danilo [here](https://github.com/schveiguy/raylib-d_examples). However, the C examples are used for testing while the port is in progress.
+2. Provide importC shims for the external files (such as GLFW or stb_image). These will be added as needed when the modules depending on them are ported to D.
+3. Turn off betterC
+4. Migrate C API to be more D-like, leaving original raylib API as a wrapper.
