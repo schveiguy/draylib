@@ -444,7 +444,7 @@ endif
 # Define object required on compilation
 OBJS = rcore.o \
        rshapes.o \
-       rtextures.o \
+       stb_image_bin.o \
        rtext.o \
        utils.o
 
@@ -561,7 +561,7 @@ rshapes.o : rshapes.c raylib.h rlgl.h
 	$(CC) -c $< $(CFLAGS) $(INCLUDE_PATHS) -D$(PLATFORM) -D$(GRAPHICS)
 
 # Compile textures module
-rtextures.o : rtextures.c raylib.h rlgl.h utils.h
+stb_image_bin.o : stb_image_bin.c
 	$(CC) -c $< $(CFLAGS) $(INCLUDE_PATHS) -D$(PLATFORM) -D$(GRAPHICS)
 
 # Compile text module

@@ -1,5 +1,5 @@
 module rtextures;
-@nogc nothrow:
+//@nogc nothrow: // FIXME once ImportC is sane https://issues.dlang.org/show_bug.cgi?id=23812
 extern(C): __gshared:
 
 private template HasVersion(string versionId) {
@@ -70,10 +70,10 @@ import raylib.config;
 //import raylib.utils;              // Required for: TRACELOG() and fopen() Android mapping
 import raylib.rlgl;               // OpenGL abstraction layer to OpenGL 1.1, 3.3 or ES2
 
-import core.stdc.stdlib;             // Required for: malloc(), free()
+//import core.stdc.stdlib;             // Required for: malloc(), free()
 import core.stdc.string;             // Required for: strlen() [Used in ImageTextEx()]
 import core.stdc.math;               // Required for: fabsf()
-import core.stdc.stdio;              // Required for: sprintf() [Used in ExportImageAsCode()]
+//import core.stdc.stdio;              // Required for: sprintf() [Used in ExportImageAsCode()]
 
 // define allocation functions
 alias RL_MALLOC = malloc;
@@ -117,46 +117,7 @@ version (__TINYC__) {
 }
 */
 
-import raylib.external.stb_image;
-
-/*static if ((HasVersion!"SUPPORT_FILEFORMAT_BMP" || 
-     HasVersion!"SUPPORT_FILEFORMAT_PNG" || 
-     HasVersion!"SUPPORT_FILEFORMAT_TGA" || 
-     HasVersion!"SUPPORT_FILEFORMAT_JPG" || 
-     HasVersion!"SUPPORT_FILEFORMAT_PSD" || 
-     HasVersion!"SUPPORT_FILEFORMAT_GIF" || 
-     HasVersion!"SUPPORT_FILEFORMAT_PIC" || 
-     HasVersion!"SUPPORT_FILEFORMAT_HDR")) {
-
-    enum STBI_MALLOC = malloc;
-    enum STBI_FREE = free;
-    enum STBI_REALLOC = RL_REALLOC;
-
-    enum STB_IMAGE_IMPLEMENTATION =
-    #include "external/stb_image.h";         // Required for: stbi_load_from_file()
-                                            // NOTE: Used to read image data (multiple formats support)
-}*/
-
-import raylib.external.stb_image_write;
-
-/*static if (SUPPORT_IMAGE_EXPORT) {
-    enum STBIW_MALLOC = malloc;
-    enum STBIW_FREE = free;
-    enum STBIW_REALLOC = RL_REALLOC;
-
-    enum STB_IMAGE_WRITE_IMPLEMENTATION =
-    #include "external/stb_image_write.h";   // Required for: stbi_write_*()
-}*/
-
-import raylib.external.stb_image_resize;
-
-/*version (SUPPORT_IMAGE_MANIPULATION) {
-    enum string STBIR_MALLOC(string size,string c) = ` ((void)(c), malloc(size))`;
-    enum string STBIR_FREE(string ptr,string c) = ` ((void)(c), free(ptr))`;
-
-    enum STB_IMAGE_RESIZE_IMPLEMENTATION =
-    #include "external/stb_image_resize.h";  // Required for: stbir_resize_uint8() [ImageResize()]
-}*/
+import stb_image_import;
 
 //----------------------------------------------------------------------------------
 // Defines and Macros

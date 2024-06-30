@@ -7,6 +7,7 @@
 	"copyright": "(c) 2013-2022 Ramon Santamaria, (c) 2022+ Steven Schveighoffer Doigt",
 	"description": "A D port of raylib, with D niceties",
 	"license": "Zlib",
+	"importPaths": ["source", "importc"],
 	"name": "draylib",
         "dependencies" : {
             "bindbc-glfw" : "~>1.0.0"
@@ -17,7 +18,7 @@
         "buildOptions" : [ "betterC" ],
 	"extraDependencyFiles": [ "raylib/*.o" ],
 	"dflags": [
-"raylibc/raudio.o", "raylibc/rglfw.o", "raylibc/rshapes.o", "raylibc/rcore.o", "raylibc/rmodels.o", "raylibc/rtext.o", "raylibc/utils.o"
+"raylibc/raudio.o", "raylibc/rglfw.o", "raylibc/rshapes.o", "raylibc/rcore.o", "raylibc/rmodels.o", "raylibc/rtext.o", "raylibc/utils.o", "raylibc/stb_image_bin.o"
 	],
         "versions": [
             "GLFW_33"
