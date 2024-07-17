@@ -39,6 +39,9 @@ private template HasVersion(string versionId) {
 
 import raylib;                     // WARNING: Required for: LogType enum
 
+alias TRACELOG=TraceLog;
+
+
 // Check if config flags have been externally provided on compilation line
 import raylib.config;                 // Defines module configuration flags
 
@@ -157,6 +160,16 @@ version (none) { // PLATFORM_ANDROID
 
 }  // SUPPORT_TRACELOG
 }
+
+void TRACELOGD(const(char)* text, ...) {
+    debug {
+        va_list args = void;
+        va_start(args, text);
+        TraceLog(TraceLogLevel.LOG_DEBUG, text, args);
+        va_end(args);
+    }
+}
+
 
 // Internal memory allocator
 // NOTE: Initializes to zero by default
