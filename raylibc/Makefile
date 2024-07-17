@@ -445,8 +445,7 @@ endif
 OBJS = rcore.o \
        rshapes.o \
        stb_image_bin.o \
-       rtext.o \
-       utils.o
+       stb_truetype_bin.o
 
 ifeq ($(PLATFORM),PLATFORM_DESKTOP)
     ifeq ($(USE_EXTERNAL_GLFW),FALSE)
@@ -562,6 +561,10 @@ rshapes.o : rshapes.c raylib.h rlgl.h
 
 # Compile textures module
 stb_image_bin.o : stb_image_bin.c
+	$(CC) -c $< $(CFLAGS) $(INCLUDE_PATHS) -D$(PLATFORM) -D$(GRAPHICS)
+
+# Compile truetype module
+stb_truetype_bin.o : stb_truetype_bin.c
 	$(CC) -c $< $(CFLAGS) $(INCLUDE_PATHS) -D$(PLATFORM) -D$(GRAPHICS)
 
 # Compile text module
