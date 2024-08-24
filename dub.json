@@ -12,6 +12,6 @@
         "buildOptions" : [ "betterC" ],
 	"extraDependencyFiles": [ "raylib/*.o" ],
 	"dflags": [
-"raylibc/raudio.o", "raylibc/rglfw.o", "raylibc/rshapes.o", "raylibc/rcore.o", "raylibc/rmodels.o", "raylibc/stb_truetype_bin.o", "raylibc/stb_image_bin.o"
+"raylibc/raudio.o", "raylibc/rglfw.o", "raylibc/rcore.o", "raylibc/rmodels.o", "raylibc/stb_truetype_bin.o", "raylibc/stb_image_bin.o"
 	]
 }
