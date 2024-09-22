@@ -1,4 +1,4 @@
-@nogc nothrow:
+//@nogc nothrow:
 extern(C): __gshared:
 
 private template HasVersion(string versionId) {
@@ -44,66 +44,25 @@ private template HasVersion(string versionId) {
 *
 **********************************************************************************************/
 
-public import raylib;         // Declares module functions
+import raylib;         // Declares module functions
 
-// Check if config flags have been externally provided on compilation line
-static if (!HasVersion!"EXTERNAL_CONFIG_FLAGS") {
-    public import config;     // Defines module configuration flags
-}
+import raylib.config;     // Defines module configuration flags
 
-public import utils;          // Required for: TRACELOG(), LoadFileData(), LoadFileText(), SaveFileText()
-public import rlgl;           // OpenGL abstraction layer to OpenGL 1.1, 2.1, 3.3+ or ES2
-public import raymath;        // Required for: Vector3, Quaternion and Matrix functionality
+import raylib.utils : TRACELOG;          // Required for: TRACELOG(), LoadFileData(), LoadFileText(), SaveFileText()
+import raylib.rlgl;           // OpenGL abstraction layer to OpenGL 1.1, 2.1, 3.3+ or ES2
+import raylib.raymath;        // Required for: Vector3, Quaternion and Matrix functionality
 
-public import core.stdc.stdio;          // Required for: sprintf()
-public import core.stdc.stdlib;         // Required for: malloc(), free()
-public import core.stdc.string;         // Required for: memcmp(), strlen()
-public import core.stdc.math;           // Required for: sinf(), cosf(), sqrtf(), fabsf()
+import core.stdc.stdio;          // Required for: sprintf()
+import core.stdc.stdlib;         // Required for: malloc(), free()
+import core.stdc.string;         // Required for: memcmp(), strlen()
+import core.stdc.math;           // Required for: sinf(), cosf(), sqrtf(), fabsf()
 
-static if (HasVersion!"SUPPORT_FILEFORMAT_OBJ" || HasVersion!"SUPPORT_FILEFORMAT_MTL") {
-    enum TINYOBJ_MALLOC = RL_MALLOC;
-    enum TINYOBJ_CALLOC = RL_CALLOC;
-    enum TINYOBJ_REALLOC = RL_REALLOC;
-    enum TINYOBJ_FREE = RL_FREE;
-
-    enum TINYOBJ_LOADER_C_IMPLEMENTATION =
-    #include "external/tinyobj_loader_c.h";      // OBJ/MTL file formats loading
-}
-
-version (SUPPORT_FILEFORMAT_GLTF) {
-    enum CGLTF_MALLOC = RL_MALLOC;
-    enum CGLTF_FREE = RL_FREE;
-
-    enum CGLTF_IMPLEMENTATION =
-    #include "external/cgltf.h";         // glTF file format loading
-}
-
-version (SUPPORT_FILEFORMAT_VOX) {
-    enum VOX_MALLOC = RL_MALLOC;
-    enum VOX_CALLOC = RL_CALLOC;
-    enum VOX_REALLOC = RL_REALLOC;
-    enum VOX_FREE = RL_FREE;
-
-    enum VOX_LOADER_IMPLEMENTATION =
-    #include "external/vox_loader.h";    // VOX file format loading (MagikaVoxel)
-}
-
-version (SUPPORT_MESH_GENERATION) {
-    enum string PAR_MALLOC(string T, string N) = `(cast(T*)RL_MALLOC(` ~ N ~ `*` ~ T ~ `.sizeof))`;
-    enum string PAR_CALLOC(string T, string N) = `(cast(T*)RL_CALLOC(` ~ N ~ `*` ~ T ~ `.sizeof, 1))`;
-    enum string PAR_REALLOC(string T, string BUF, string N) = `(cast(T*)RL_REALLOC(` ~ BUF ~ `, sizeof(` ~ T ~ `)*(` ~ N ~ `)))`;
-    enum PAR_FREE = RL_FREE;
-
-    enum PAR_SHAPES_IMPLEMENTATION =
-    #include "external/par_shapes.h";    // Shapes 3d parametric generation
-}
+import modelfiles_import;
 
 version (Windows) {
-    public import direct;     // Required for: _chdir() [Used in LoadOBJ()]
-    enum CHDIR = _chdir;
+    import direct : CHDIR = _chdir;     // Required for: _chdir() [Used in LoadOBJ()]
 } else {
-    public import core.sys.posix.unistd;     // Required for: chdir() (POSIX) [Used in LoadOBJ()]
-    enum CHDIR = chdir;
+    import core.sys.posix.unistd : CHDIR = chdir;     // Required for: chdir() (POSIX) [Used in LoadOBJ()]
 }
 
 //----------------------------------------------------------------------------------
@@ -113,34 +72,35 @@ enum MAX_MATERIAL_MAPS =       12;    // Maximum number of maps supported
 
 enum MAX_MESH_VERTEX_BUFFERS =  7;    // Maximum vertex buffers (VBO) per mesh
 
+alias RL_MALLOC = core.stdc.stdlib.malloc;
+alias RL_FREE = core.stdc.stdlib.free;
+alias RL_CALLOC = core.stdc.stdlib.calloc;
+enum string PAR_MALLOC(string T, string N) = `(cast(` ~ T ~ `*)RL_MALLOC(` ~ N ~ `*` ~ T ~ `.sizeof))`;
+enum string PAR_CALLOC(string T, string N) = `(cast(` ~ T ~ `*)RL_CALLOC(` ~ N ~ `*` ~ T ~ `.sizeof, 1))`;
+enum string PAR_REALLOC(string T, string BUF, string N) = `(cast(` ~ T ~ `*)RL_REALLOC(` ~ BUF ~ `, sizeof(` ~ T ~ `)*(` ~ N ~ `)))`;
+
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
 //----------------------------------------------------------------------------------
 // ...
 
+// helper to do a float[3] array
+struct Float3 {
+    float[3] arr;
+    this(float x, float y, float z) @nogc{
+        this.arr = [x, y, z];
+    }
+
+    float* getArr() => arr.ptr;
+
+    alias this = getArr;
+}
+
 //----------------------------------------------------------------------------------
 // Global Variables Definition
 //----------------------------------------------------------------------------------
 // ...
-
-//----------------------------------------------------------------------------------
-// Module specific Functions Declaration
-//----------------------------------------------------------------------------------
-version (SUPPORT_FILEFORMAT_OBJ) {
-private Model LoadOBJ(const(char)* fileName);     // Load OBJ mesh data
-}
-version (SUPPORT_FILEFORMAT_IQM) {
-private Model LoadIQM(const(char)* fileName);     // Load IQM mesh data
-private ModelAnimation* LoadModelAnimationsIQM(const(char)* fileName, uint* animCount);    // Load IQM animation data
-}
-version (SUPPORT_FILEFORMAT_GLTF) {
-private Model LoadGLTF(const(char)* fileName);    // Load GLTF mesh data
-//static ModelAnimation *LoadModelAnimationGLTF(const char *fileName, unsigned int *animCount);    // Load GLTF animation data
-}
-version (SUPPORT_FILEFORMAT_VOX) {
-private Model LoadVOX(const(char)* filename);     // Load VOX mesh data
-}
 
 //----------------------------------------------------------------------------------
 // Module Functions Definition
@@ -913,18 +873,18 @@ void DrawGrid(int slices, float spacing)
 // Load model from files (mesh and material)
 Model LoadModel(const(char)* fileName)
 {
-    Model model = { 0 };
+    Model model = Model.init; // { 0 };
 
-version (SUPPORT_FILEFORMAT_OBJ) {
+static if (SUPPORT_FILEFORMAT_OBJ) {
     if (IsFileExtension(fileName, ".obj")) model = LoadOBJ(fileName);
 }
-version (SUPPORT_FILEFORMAT_IQM) {
+static if (SUPPORT_FILEFORMAT_IQM) {
     if (IsFileExtension(fileName, ".iqm")) model = LoadIQM(fileName);
 }
-version (SUPPORT_FILEFORMAT_GLTF) {
+static if (SUPPORT_FILEFORMAT_GLTF) {
     if (IsFileExtension(fileName, ".gltf;.glb")) model = LoadGLTF(fileName);
 }
-version (SUPPORT_FILEFORMAT_VOX) {
+static if (SUPPORT_FILEFORMAT_VOX) {
     if (IsFileExtension(fileName, ".vox")) model = LoadVOX(fileName);
 }
 
@@ -936,10 +896,10 @@ version (SUPPORT_FILEFORMAT_VOX) {
         model.meshCount = 1;
         model.meshes = cast(Mesh*)RL_CALLOC(model.meshCount, Mesh.sizeof);
 version (SUPPORT_MESH_GENERATION) {
-        TRACELOG(LOG_WARNING, "MESH: [%s] Failed to load mesh data, default to cube mesh", fileName);
+        TRACELOG(TraceLogLevel.LOG_WARNING, "MESH: [%s] Failed to load mesh data, default to cube mesh", fileName);
         model.meshes[0] = GenMeshCube(1.0f, 1.0f, 1.0f);
 } else {
-        TRACELOG(LOG_WARNING, "MESH: [%s] Failed to load mesh data", fileName);
+        TRACELOG(TraceLogLevel.LOG_WARNING, "MESH: [%s] Failed to load mesh data", fileName);
 }
     }
     else
@@ -950,7 +910,7 @@ version (SUPPORT_MESH_GENERATION) {
 
     if (model.materialCount == 0)
     {
-        TRACELOG(LOG_WARNING, "MATERIAL: [%s] Failed to load material data, default to white material", fileName);
+        TRACELOG(TraceLogLevel.LOG_WARNING, "MATERIAL: [%s] Failed to load material data, default to white material", fileName);
 
         model.materialCount = 1;
         model.materials = cast(Material*)RL_CALLOC(model.materialCount, Material.sizeof);
@@ -968,7 +928,7 @@ version (SUPPORT_MESH_GENERATION) {
 // of mesh pointing to same data as original version... be careful!
 Model LoadModelFromMesh(Mesh mesh)
 {
-    Model model = { 0 };
+    Model model = Model.init; // { 0 };
 
     model.transform = MatrixIdentity();
 
@@ -1009,7 +969,7 @@ void UnloadModel(Model model)
     RL_FREE(model.bones);
     RL_FREE(model.bindPose);
 
-    TRACELOG(LOG_INFO, "MODEL: Unloaded model (and meshes) from RAM and VRAM");
+    TRACELOG(TraceLogLevel.LOG_INFO, "MODEL: Unloaded model (and meshes) from RAM and VRAM");
 }
 
 // Unload model (but not meshes) from memory (RAM and/or VRAM)
@@ -1030,17 +990,17 @@ void UnloadModelKeepMeshes(Model model)
     RL_FREE(model.bones);
     RL_FREE(model.bindPose);
 
-    TRACELOG(LOG_INFO, "MODEL: Unloaded model (but not meshes) from RAM and VRAM");
+    TRACELOG(TraceLogLevel.LOG_INFO, "MODEL: Unloaded model (but not meshes) from RAM and VRAM");
 }
 
 // Compute model bounding box limits (considers all meshes)
 BoundingBox GetModelBoundingBox(Model model)
 {
-    BoundingBox bounds = { 0 };
+    BoundingBox bounds = BoundingBox.init; // { 0 };
 
     if (model.meshCount > 0)
     {
-        Vector3 temp = { 0 };
+        Vector3 temp = Vector3.init; // { 0 };
         bounds = GetMeshBoundingBox(model.meshes[0]);
 
         for (int i = 1; i < model.meshCount; i++)
@@ -1068,7 +1028,7 @@ void UploadMesh(Mesh* mesh, bool dynamic)
     if (mesh.vaoId > 0)
     {
         // Check if mesh has already been loaded in GPU
-        TRACELOG(LOG_WARNING, "VAO: [ID %i] Trying to re-load an already loaded mesh", mesh.vaoId);
+        TRACELOG(TraceLogLevel.LOG_WARNING, "VAO: [ID %i] Trying to re-load an already loaded mesh", mesh.vaoId);
         return;
     }
 
@@ -1091,83 +1051,83 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
 
     // Enable vertex attributes: position (shader-location = 0)
     void* vertices = mesh.animVertices != null ? mesh.animVertices : mesh.vertices;
-    mesh.vboId[0] = rlLoadVertexBuffer(vertices, mesh.vertexCount*3*float.sizeof, dynamic);
-    rlSetVertexAttribute(0, 3, RL_FLOAT, 0, 0, 0);
+    mesh.vboId[0] = rlLoadVertexBuffer(vertices, mesh.vertexCount*3*int(float.sizeof), dynamic);
+    rlSetVertexAttribute(0, 3, RL_FLOAT, 0, 0, null);
     rlEnableVertexAttribute(0);
 
     // Enable vertex attributes: texcoords (shader-location = 1)
-    mesh.vboId[1] = rlLoadVertexBuffer(mesh.texcoords, mesh.vertexCount*2*float.sizeof, dynamic);
-    rlSetVertexAttribute(1, 2, RL_FLOAT, 0, 0, 0);
+    mesh.vboId[1] = rlLoadVertexBuffer(mesh.texcoords, mesh.vertexCount*2*int(float.sizeof), dynamic);
+    rlSetVertexAttribute(1, 2, RL_FLOAT, 0, 0, null);
     rlEnableVertexAttribute(1);
 
     if (mesh.normals != null)
     {
         // Enable vertex attributes: normals (shader-location = 2)
         void* normals = mesh.animNormals != null ? mesh.animNormals : mesh.normals;
-        mesh.vboId[2] = rlLoadVertexBuffer(normals, mesh.vertexCount*3*float.sizeof, dynamic);
-        rlSetVertexAttribute(2, 3, RL_FLOAT, 0, 0, 0);
+        mesh.vboId[2] = rlLoadVertexBuffer(normals, mesh.vertexCount*3*int(float.sizeof), dynamic);
+        rlSetVertexAttribute(2, 3, RL_FLOAT, 0, 0, null);
         rlEnableVertexAttribute(2);
     }
     else
     {
         // Default color vertex attribute set to WHITE
         float[3] value = [ 1.0f, 1.0f, 1.0f ];
-        rlSetVertexAttributeDefault(2, value.ptr, SHADER_ATTRIB_VEC3, 3);
+        rlSetVertexAttributeDefault(2, value.ptr, ShaderAttributeDataType.SHADER_ATTRIB_VEC3, 3);
         rlDisableVertexAttribute(2);
     }
 
     if (mesh.colors != null)
     {
         // Enable vertex attribute: color (shader-location = 3)
-        mesh.vboId[3] = rlLoadVertexBuffer(mesh.colors, mesh.vertexCount*4*ubyte.sizeof, dynamic);
-        rlSetVertexAttribute(3, 4, RL_UNSIGNED_BYTE, 1, 0, 0);
+        mesh.vboId[3] = rlLoadVertexBuffer(mesh.colors, mesh.vertexCount*4*int(ubyte.sizeof), dynamic);
+        rlSetVertexAttribute(3, 4, RL_UNSIGNED_BYTE, 1, 0, null);
         rlEnableVertexAttribute(3);
     }
     else
     {
         // Default color vertex attribute set to WHITE
         float[4] value = [ 1.0f, 1.0f, 1.0f, 1.0f ];
-        rlSetVertexAttributeDefault(3, value.ptr, SHADER_ATTRIB_VEC4, 4);
+        rlSetVertexAttributeDefault(3, value.ptr, ShaderAttributeDataType.SHADER_ATTRIB_VEC4, 4);
         rlDisableVertexAttribute(3);
     }
 
     if (mesh.tangents != null)
     {
         // Enable vertex attribute: tangent (shader-location = 4)
-        mesh.vboId[4] = rlLoadVertexBuffer(mesh.tangents, mesh.vertexCount*4*float.sizeof, dynamic);
-        rlSetVertexAttribute(4, 4, RL_FLOAT, 0, 0, 0);
+        mesh.vboId[4] = rlLoadVertexBuffer(mesh.tangents, mesh.vertexCount*4*int(float.sizeof), dynamic);
+        rlSetVertexAttribute(4, 4, RL_FLOAT, 0, 0, null);
         rlEnableVertexAttribute(4);
     }
     else
     {
         // Default tangents vertex attribute
         float[4] value = [ 0.0f, 0.0f, 0.0f, 0.0f ];
-        rlSetVertexAttributeDefault(4, value.ptr, SHADER_ATTRIB_VEC4, 4);
+        rlSetVertexAttributeDefault(4, value.ptr, ShaderAttributeDataType.SHADER_ATTRIB_VEC4, 4);
         rlDisableVertexAttribute(4);
     }
 
     if (mesh.texcoords2 != null)
     {
         // Enable vertex attribute: texcoord2 (shader-location = 5)
-        mesh.vboId[5] = rlLoadVertexBuffer(mesh.texcoords2, mesh.vertexCount*2*float.sizeof, dynamic);
-        rlSetVertexAttribute(5, 2, RL_FLOAT, 0, 0, 0);
+        mesh.vboId[5] = rlLoadVertexBuffer(mesh.texcoords2, mesh.vertexCount*2*int(float.sizeof), dynamic);
+        rlSetVertexAttribute(5, 2, RL_FLOAT, 0, 0, null);
         rlEnableVertexAttribute(5);
     }
     else
     {
         // Default texcoord2 vertex attribute
         float[2] value = [ 0.0f, 0.0f ];
-        rlSetVertexAttributeDefault(5, value.ptr, SHADER_ATTRIB_VEC2, 2);
+        rlSetVertexAttributeDefault(5, value.ptr, ShaderAttributeDataType.SHADER_ATTRIB_VEC2, 2);
         rlDisableVertexAttribute(5);
     }
 
     if (mesh.indices != null)
     {
-        mesh.vboId[6] = rlLoadVertexBufferElement(mesh.indices, mesh.triangleCount*3*ushort.sizeof, dynamic);
+        mesh.vboId[6] = rlLoadVertexBufferElement(mesh.indices, mesh.triangleCount*3*int(ushort.sizeof), dynamic);
     }
 
-    if (mesh.vaoId > 0) TRACELOG(LOG_INFO, "VAO: [ID %i] Mesh uploaded successfully to VRAM (GPU)", mesh.vaoId);
-    else TRACELOG(LOG_INFO, "VBO: Mesh uploaded successfully to VRAM (GPU)");
+    if (mesh.vaoId > 0) TRACELOG(TraceLogLevel.LOG_INFO, "VAO: [ID %i] Mesh uploaded successfully to VRAM (GPU)", mesh.vaoId);
+    else TRACELOG(TraceLogLevel.LOG_INFO, "VBO: Mesh uploaded successfully to VRAM (GPU)");
 
     rlDisableVertexArray();
 }
@@ -1188,7 +1148,7 @@ version (GRAPHICS_API_OPENGL_11) {
     enum GL_COLOR_ARRAY =          0x8076;
     enum GL_TEXTURE_COORD_ARRAY =  0x8078;
 
-    rlEnableTexture(material.maps[MATERIAL_MAP_DIFFUSE].texture.id);
+    rlEnableTexture(material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].texture.id);
 
     rlEnableStatePointer(GL_VERTEX_ARRAY, mesh.vertices);
     rlEnableStatePointer(GL_TEXTURE_COORD_ARRAY, mesh.texcoords);
@@ -1197,10 +1157,10 @@ version (GRAPHICS_API_OPENGL_11) {
 
     rlPushMatrix();
         rlMultMatrixf(MatrixToFloat(transform));
-        rlColor4ub(material.maps[MATERIAL_MAP_DIFFUSE].color.r,
-                   material.maps[MATERIAL_MAP_DIFFUSE].color.g,
-                   material.maps[MATERIAL_MAP_DIFFUSE].color.b,
-                   material.maps[MATERIAL_MAP_DIFFUSE].color.a);
+        rlColor4ub(material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.r,
+                   material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.g,
+                   material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.b,
+                   material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.a);
 
         if (mesh.indices != null) rlDrawVertexArrayElements(0, mesh.triangleCount*3, mesh.indices);
         else rlDrawVertexArray(0, mesh.vertexCount);
@@ -1221,29 +1181,29 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
     // Send required data to shader (matrices, values)
     //-----------------------------------------------------
     // Upload to shader material.colDiffuse
-    if (material.shader.locs[SHADER_LOC_COLOR_DIFFUSE] != -1)
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_COLOR_DIFFUSE] != -1)
     {
         float[4] values = [
-            cast(float)material.maps[MATERIAL_MAP_DIFFUSE].color.r/255.0f,
-            cast(float)material.maps[MATERIAL_MAP_DIFFUSE].color.g/255.0f,
-            cast(float)material.maps[MATERIAL_MAP_DIFFUSE].color.b/255.0f,
-            cast(float)material.maps[MATERIAL_MAP_DIFFUSE].color.a/255.0f
+            cast(float)material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.r/255.0f,
+            cast(float)material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.g/255.0f,
+            cast(float)material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.b/255.0f,
+            cast(float)material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.a/255.0f
         ];
 
-        rlSetUniform(material.shader.locs[SHADER_LOC_COLOR_DIFFUSE], values.ptr, SHADER_UNIFORM_VEC4, 1);
+        rlSetUniform(material.shader.locs[ShaderLocationIndex.SHADER_LOC_COLOR_DIFFUSE], values.ptr, ShaderUniformDataType.SHADER_UNIFORM_VEC4, 1);
     }
 
     // Upload to shader material.colSpecular (if location available)
-    if (material.shader.locs[SHADER_LOC_COLOR_SPECULAR] != -1)
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR] != -1)
     {
         float[4] values = [
-            cast(float)material.maps[SHADER_LOC_COLOR_SPECULAR].color.r/255.0f,
-            cast(float)material.maps[SHADER_LOC_COLOR_SPECULAR].color.g/255.0f,
-            cast(float)material.maps[SHADER_LOC_COLOR_SPECULAR].color.b/255.0f,
-            cast(float)material.maps[SHADER_LOC_COLOR_SPECULAR].color.a/255.0f
+            cast(float)material.maps[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR].color.r/255.0f,
+            cast(float)material.maps[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR].color.g/255.0f,
+            cast(float)material.maps[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR].color.b/255.0f,
+            cast(float)material.maps[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR].color.a/255.0f
         ];
 
-        rlSetUniform(material.shader.locs[SHADER_LOC_COLOR_SPECULAR], values.ptr, SHADER_UNIFORM_VEC4, 1);
+        rlSetUniform(material.shader.locs[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR], values.ptr, ShaderUniformDataType.SHADER_UNIFORM_VEC4, 1);
     }
 
     // Get a copy of current matrices to work with,
@@ -1257,11 +1217,11 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
     Matrix matProjection = rlGetMatrixProjection();
 
     // Upload view and projection matrices (if locations available)
-    if (material.shader.locs[SHADER_LOC_MATRIX_VIEW] != -1) rlSetUniformMatrix(material.shader.locs[SHADER_LOC_MATRIX_VIEW], matView);
-    if (material.shader.locs[SHADER_LOC_MATRIX_PROJECTION] != -1) rlSetUniformMatrix(material.shader.locs[SHADER_LOC_MATRIX_PROJECTION], matProjection);
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_VIEW] != -1) rlSetUniformMatrix(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_VIEW], matView);
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_PROJECTION] != -1) rlSetUniformMatrix(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_PROJECTION], matProjection);
 
-    // Model transformation matrix is send to shader uniform location: SHADER_LOC_MATRIX_MODEL
-    if (material.shader.locs[SHADER_LOC_MATRIX_MODEL] != -1) rlSetUniformMatrix(material.shader.locs[SHADER_LOC_MATRIX_MODEL], transform);
+    // Model transformation matrix is send to shader uniform location: ShaderLocationIndex.SHADER_LOC_MATRIX_MODEL
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_MODEL] != -1) rlSetUniformMatrix(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_MODEL], transform);
 
     // Accumulate several model transformations:
     //    transform: model transformation provided (includes DrawModel() params combined with model.transform)
@@ -1272,7 +1232,7 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
     matModelView = MatrixMultiply(matModel, matView);
 
     // Upload model normal matrix (if locations available)
-    if (material.shader.locs[SHADER_LOC_MATRIX_NORMAL] != -1) rlSetUniformMatrix(material.shader.locs[SHADER_LOC_MATRIX_NORMAL], MatrixTranspose(MatrixInvert(matModel)));
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_NORMAL] != -1) rlSetUniformMatrix(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_NORMAL], MatrixTranspose(MatrixInvert(matModel)));
     //-----------------------------------------------------
 
     // Bind active texture maps (if available)
@@ -1284,12 +1244,12 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
             rlActiveTextureSlot(i);
 
             // Enable texture for active slot
-            if ((i == MATERIAL_MAP_IRRADIANCE) ||
-                (i == MATERIAL_MAP_PREFILTER) ||
-                (i == MATERIAL_MAP_CUBEMAP)) rlEnableTextureCubemap(material.maps[i].texture.id);
+            if ((i == MaterialMapIndex.MATERIAL_MAP_IRRADIANCE) ||
+                (i == MaterialMapIndex.MATERIAL_MAP_PREFILTER) ||
+                (i == MaterialMapIndex.MATERIAL_MAP_CUBEMAP)) rlEnableTextureCubemap(material.maps[i].texture.id);
             else rlEnableTexture(material.maps[i].texture.id);
 
-            rlSetUniform(material.shader.locs[SHADER_LOC_MAP_DIFFUSE + i], &i, SHADER_UNIFORM_INT, 1);
+            rlSetUniform(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MAP_DIFFUSE + i], &i, ShaderUniformDataType.SHADER_UNIFORM_INT, 1);
         }
     }
 
@@ -1299,55 +1259,55 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
     {
         // Bind mesh VBO data: vertex position (shader-location = 0)
         rlEnableVertexBuffer(mesh.vboId[0]);
-        rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_POSITION], 3, RL_FLOAT, 0, 0, 0);
-        rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_POSITION]);
+        rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_POSITION], 3, RL_FLOAT, 0, 0, null);
+        rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_POSITION]);
 
         // Bind mesh VBO data: vertex texcoords (shader-location = 1)
         rlEnableVertexBuffer(mesh.vboId[1]);
-        rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TEXCOORD01], 2, RL_FLOAT, 0, 0, 0);
-        rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TEXCOORD01]);
+        rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD01], 2, RL_FLOAT, 0, 0, null);
+        rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD01]);
 
-        if (material.shader.locs[SHADER_LOC_VERTEX_NORMAL] != -1)
+        if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_NORMAL] != -1)
         {
             // Bind mesh VBO data: vertex normals (shader-location = 2)
             rlEnableVertexBuffer(mesh.vboId[2]);
-            rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_NORMAL], 3, RL_FLOAT, 0, 0, 0);
-            rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_NORMAL]);
+            rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_NORMAL], 3, RL_FLOAT, 0, 0, null);
+            rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_NORMAL]);
         }
 
         // Bind mesh VBO data: vertex colors (shader-location = 3, if available)
-        if (material.shader.locs[SHADER_LOC_VERTEX_COLOR] != -1)
+        if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR] != -1)
         {
             if (mesh.vboId[3] != 0)
             {
                 rlEnableVertexBuffer(mesh.vboId[3]);
-                rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_COLOR], 4, RL_UNSIGNED_BYTE, 1, 0, 0);
-                rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_COLOR]);
+                rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR], 4, RL_UNSIGNED_BYTE, 1, 0, null);
+                rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR]);
             }
             else
             {
                 // Set default value for unused attribute
                 // NOTE: Required when using default shader and no VAO support
                 float[4] value = [ 1.0f, 1.0f, 1.0f, 1.0f ];
-                rlSetVertexAttributeDefault(material.shader.locs[SHADER_LOC_VERTEX_COLOR], value.ptr, SHADER_ATTRIB_VEC2, 4);
-                rlDisableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_COLOR]);
+                rlSetVertexAttributeDefault(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR], value.ptr, ShaderAttributeDataType.SHADER_ATTRIB_VEC2, 4);
+                rlDisableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR]);
             }
         }
 
         // Bind mesh VBO data: vertex tangents (shader-location = 4, if available)
-        if (material.shader.locs[SHADER_LOC_VERTEX_TANGENT] != -1)
+        if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TANGENT] != -1)
         {
             rlEnableVertexBuffer(mesh.vboId[4]);
-            rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TANGENT], 4, RL_FLOAT, 0, 0, 0);
-            rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TANGENT]);
+            rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TANGENT], 4, RL_FLOAT, 0, 0, null);
+            rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TANGENT]);
         }
 
         // Bind mesh VBO data: vertex texcoords2 (shader-location = 5, if available)
-        if (material.shader.locs[SHADER_LOC_VERTEX_TEXCOORD02] != -1)
+        if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD02] != -1)
         {
             rlEnableVertexBuffer(mesh.vboId[5]);
-            rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TEXCOORD02], 2, RL_FLOAT, 0, 0, 0);
-            rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TEXCOORD02]);
+            rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD02], 2, RL_FLOAT, 0, 0, null);
+            rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD02]);
         }
 
         if (mesh.indices != null) rlEnableVertexBufferElement(mesh.vboId[6]);
@@ -1369,10 +1329,10 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
         }
 
         // Send combined model-view-projection matrix to shader
-        rlSetUniformMatrix(material.shader.locs[SHADER_LOC_MATRIX_MVP], matModelViewProjection);
+        rlSetUniformMatrix(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_MVP], matModelViewProjection);
 
         // Draw mesh
-        if (mesh.indices != null) rlDrawVertexArrayElements(0, mesh.triangleCount*3, 0);
+        if (mesh.indices != null) rlDrawVertexArrayElements(0, mesh.triangleCount*3, null);
         else rlDrawVertexArray(0, mesh.vertexCount);
     }
 
@@ -1383,9 +1343,9 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
         rlActiveTextureSlot(i);
 
         // Disable texture for active slot
-        if ((i == MATERIAL_MAP_IRRADIANCE) ||
-            (i == MATERIAL_MAP_PREFILTER) ||
-            (i == MATERIAL_MAP_CUBEMAP)) rlDisableTextureCubemap();
+        if ((i == MaterialMapIndex.MATERIAL_MAP_IRRADIANCE) ||
+            (i == MaterialMapIndex.MATERIAL_MAP_PREFILTER) ||
+            (i == MaterialMapIndex.MATERIAL_MAP_CUBEMAP)) rlDisableTextureCubemap();
         else rlDisableTexture();
     }
 
@@ -1417,29 +1377,29 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
     // Send required data to shader (matrices, values)
     //-----------------------------------------------------
     // Upload to shader material.colDiffuse
-    if (material.shader.locs[SHADER_LOC_COLOR_DIFFUSE] != -1)
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_COLOR_DIFFUSE] != -1)
     {
         float[4] values = [
-            cast(float)material.maps[MATERIAL_MAP_DIFFUSE].color.r/255.0f,
-            cast(float)material.maps[MATERIAL_MAP_DIFFUSE].color.g/255.0f,
-            cast(float)material.maps[MATERIAL_MAP_DIFFUSE].color.b/255.0f,
-            cast(float)material.maps[MATERIAL_MAP_DIFFUSE].color.a/255.0f
+            cast(float)material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.r/255.0f,
+            cast(float)material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.g/255.0f,
+            cast(float)material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.b/255.0f,
+            cast(float)material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color.a/255.0f
         ];
 
-        rlSetUniform(material.shader.locs[SHADER_LOC_COLOR_DIFFUSE], values.ptr, SHADER_UNIFORM_VEC4, 1);
+        rlSetUniform(material.shader.locs[ShaderLocationIndex.SHADER_LOC_COLOR_DIFFUSE], values.ptr, ShaderUniformDataType.SHADER_UNIFORM_VEC4, 1);
     }
 
     // Upload to shader material.colSpecular (if location available)
-    if (material.shader.locs[SHADER_LOC_COLOR_SPECULAR] != -1)
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR] != -1)
     {
         float[4] values = [
-            cast(float)material.maps[SHADER_LOC_COLOR_SPECULAR].color.r/255.0f,
-            cast(float)material.maps[SHADER_LOC_COLOR_SPECULAR].color.g/255.0f,
-            cast(float)material.maps[SHADER_LOC_COLOR_SPECULAR].color.b/255.0f,
-            cast(float)material.maps[SHADER_LOC_COLOR_SPECULAR].color.a/255.0f
+            cast(float)material.maps[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR].color.r/255.0f,
+            cast(float)material.maps[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR].color.g/255.0f,
+            cast(float)material.maps[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR].color.b/255.0f,
+            cast(float)material.maps[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR].color.a/255.0f
         ];
 
-        rlSetUniform(material.shader.locs[SHADER_LOC_COLOR_SPECULAR], values.ptr, SHADER_UNIFORM_VEC4, 1);
+        rlSetUniform(material.shader.locs[ShaderLocationIndex.SHADER_LOC_COLOR_SPECULAR], values.ptr, ShaderUniformDataType.SHADER_UNIFORM_VEC4, 1);
     }
 
     // Get a copy of current matrices to work with,
@@ -1453,8 +1413,8 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
     Matrix matProjection = rlGetMatrixProjection();
 
     // Upload view and projection matrices (if locations available)
-    if (material.shader.locs[SHADER_LOC_MATRIX_VIEW] != -1) rlSetUniformMatrix(material.shader.locs[SHADER_LOC_MATRIX_VIEW], matView);
-    if (material.shader.locs[SHADER_LOC_MATRIX_PROJECTION] != -1) rlSetUniformMatrix(material.shader.locs[SHADER_LOC_MATRIX_PROJECTION], matProjection);
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_VIEW] != -1) rlSetUniformMatrix(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_VIEW], matView);
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_PROJECTION] != -1) rlSetUniformMatrix(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_PROJECTION], matProjection);
 
     // Create instances buffer
     instanceTransforms = cast(float16*)RL_MALLOC(instances*float16.sizeof);
@@ -1469,14 +1429,14 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
     // It isn't clear which would be reliably faster in all cases and on all platforms,
     // anecdotally glMapBuffer() seems very slow (syncs) while glBufferSubData() seems
     // no faster, since we're transferring all the transform matrices anyway
-    instancesVboId = rlLoadVertexBuffer(instanceTransforms, instances*float16.sizeof, false);
+    instancesVboId = rlLoadVertexBuffer(instanceTransforms, instances*int(float16.sizeof), false);
 
-    // Instances transformation matrices are send to shader attribute location: SHADER_LOC_MATRIX_MODEL
+    // Instances transformation matrices are send to shader attribute location: ShaderLocationIndex.SHADER_LOC_MATRIX_MODEL
     for (uint i = 0; i < 4; i++)
     {
-        rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_MATRIX_MODEL] + i);
-        rlSetVertexAttribute(material.shader.locs[SHADER_LOC_MATRIX_MODEL] + i, 4, RL_FLOAT, 0, Matrix.sizeof, cast(void*)(i*Vector4.sizeof));
-        rlSetVertexAttributeDivisor(material.shader.locs[SHADER_LOC_MATRIX_MODEL] + i, 1);
+        rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_MODEL] + i);
+        rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_MODEL] + i, 4, RL_FLOAT, 0, Matrix.sizeof, cast(void*)(i*Vector4.sizeof));
+        rlSetVertexAttributeDivisor(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_MODEL] + i, 1);
     }
 
     rlDisableVertexBuffer();
@@ -1487,7 +1447,7 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
     matModelView = MatrixMultiply(rlGetMatrixTransform(), matView);
 
     // Upload model normal matrix (if locations available)
-    if (material.shader.locs[SHADER_LOC_MATRIX_NORMAL] != -1) rlSetUniformMatrix(material.shader.locs[SHADER_LOC_MATRIX_NORMAL], MatrixTranspose(MatrixInvert(matModel)));
+    if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_NORMAL] != -1) rlSetUniformMatrix(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_NORMAL], MatrixTranspose(MatrixInvert(matModel)));
     //-----------------------------------------------------
 
     // Bind active texture maps (if available)
@@ -1499,12 +1459,12 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
             rlActiveTextureSlot(i);
 
             // Enable texture for active slot
-            if ((i == MATERIAL_MAP_IRRADIANCE) ||
-                (i == MATERIAL_MAP_PREFILTER) ||
-                (i == MATERIAL_MAP_CUBEMAP)) rlEnableTextureCubemap(material.maps[i].texture.id);
+            if ((i == MaterialMapIndex.MATERIAL_MAP_IRRADIANCE) ||
+                (i == MaterialMapIndex.MATERIAL_MAP_PREFILTER) ||
+                (i == MaterialMapIndex.MATERIAL_MAP_CUBEMAP)) rlEnableTextureCubemap(material.maps[i].texture.id);
             else rlEnableTexture(material.maps[i].texture.id);
 
-            rlSetUniform(material.shader.locs[SHADER_LOC_MAP_DIFFUSE + i], &i, SHADER_UNIFORM_INT, 1);
+            rlSetUniform(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MAP_DIFFUSE + i], &i, ShaderUniformDataType.SHADER_UNIFORM_INT, 1);
         }
     }
 
@@ -1514,55 +1474,55 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
     {
         // Bind mesh VBO data: vertex position (shader-location = 0)
         rlEnableVertexBuffer(mesh.vboId[0]);
-        rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_POSITION], 3, RL_FLOAT, 0, 0, 0);
-        rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_POSITION]);
+        rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_POSITION], 3, RL_FLOAT, 0, 0, null);
+        rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_POSITION]);
 
         // Bind mesh VBO data: vertex texcoords (shader-location = 1)
         rlEnableVertexBuffer(mesh.vboId[1]);
-        rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TEXCOORD01], 2, RL_FLOAT, 0, 0, 0);
-        rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TEXCOORD01]);
+        rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD01], 2, RL_FLOAT, 0, 0, null);
+        rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD01]);
 
-        if (material.shader.locs[SHADER_LOC_VERTEX_NORMAL] != -1)
+        if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_NORMAL] != -1)
         {
             // Bind mesh VBO data: vertex normals (shader-location = 2)
             rlEnableVertexBuffer(mesh.vboId[2]);
-            rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_NORMAL], 3, RL_FLOAT, 0, 0, 0);
-            rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_NORMAL]);
+            rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_NORMAL], 3, RL_FLOAT, 0, 0, null);
+            rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_NORMAL]);
         }
 
         // Bind mesh VBO data: vertex colors (shader-location = 3, if available)
-        if (material.shader.locs[SHADER_LOC_VERTEX_COLOR] != -1)
+        if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR] != -1)
         {
             if (mesh.vboId[3] != 0)
             {
                 rlEnableVertexBuffer(mesh.vboId[3]);
-                rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_COLOR], 4, RL_UNSIGNED_BYTE, 1, 0, 0);
-                rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_COLOR]);
+                rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR], 4, RL_UNSIGNED_BYTE, 1, 0, null);
+                rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR]);
             }
             else
             {
                 // Set default value for unused attribute
                 // NOTE: Required when using default shader and no VAO support
                 float[4] value = [ 1.0f, 1.0f, 1.0f, 1.0f ];
-                rlSetVertexAttributeDefault(material.shader.locs[SHADER_LOC_VERTEX_COLOR], value.ptr, SHADER_ATTRIB_VEC2, 4);
-                rlDisableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_COLOR]);
+                rlSetVertexAttributeDefault(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR], value.ptr, ShaderAttributeDataType.SHADER_ATTRIB_VEC2, 4);
+                rlDisableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_COLOR]);
             }
         }
 
         // Bind mesh VBO data: vertex tangents (shader-location = 4, if available)
-        if (material.shader.locs[SHADER_LOC_VERTEX_TANGENT] != -1)
+        if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TANGENT] != -1)
         {
             rlEnableVertexBuffer(mesh.vboId[4]);
-            rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TANGENT], 4, RL_FLOAT, 0, 0, 0);
-            rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TANGENT]);
+            rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TANGENT], 4, RL_FLOAT, 0, 0, null);
+            rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TANGENT]);
         }
 
         // Bind mesh VBO data: vertex texcoords2 (shader-location = 5, if available)
-        if (material.shader.locs[SHADER_LOC_VERTEX_TEXCOORD02] != -1)
+        if (material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD02] != -1)
         {
             rlEnableVertexBuffer(mesh.vboId[5]);
-            rlSetVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TEXCOORD02], 2, RL_FLOAT, 0, 0, 0);
-            rlEnableVertexAttribute(material.shader.locs[SHADER_LOC_VERTEX_TEXCOORD02]);
+            rlSetVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD02], 2, RL_FLOAT, 0, 0, null);
+            rlEnableVertexAttribute(material.shader.locs[ShaderLocationIndex.SHADER_LOC_VERTEX_TEXCOORD02]);
         }
 
         if (mesh.indices != null) rlEnableVertexBufferElement(mesh.vboId[6]);
@@ -1584,10 +1544,10 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
         }
 
         // Send combined model-view-projection matrix to shader
-        rlSetUniformMatrix(material.shader.locs[SHADER_LOC_MATRIX_MVP], matModelViewProjection);
+        rlSetUniformMatrix(material.shader.locs[ShaderLocationIndex.SHADER_LOC_MATRIX_MVP], matModelViewProjection);
 
         // Draw mesh instanced
-        if (mesh.indices != null) rlDrawVertexArrayElementsInstanced(0, mesh.triangleCount*3, 0, instances);
+        if (mesh.indices != null) rlDrawVertexArrayElementsInstanced(0, mesh.triangleCount*3, null, instances);
         else rlDrawVertexArrayInstanced(0, mesh.vertexCount, instances);
     }
 
@@ -1598,9 +1558,9 @@ static if (HasVersion!"GRAPHICS_API_OPENGL_33" || HasVersion!"GRAPHICS_API_OPENG
         rlActiveTextureSlot(i);
 
         // Disable texture for active slot
-        if ((i == MATERIAL_MAP_IRRADIANCE) ||
-            (i == MATERIAL_MAP_PREFILTER) ||
-            (i == MATERIAL_MAP_CUBEMAP)) rlDisableTextureCubemap();
+        if ((i == MaterialMapIndex.MATERIAL_MAP_IRRADIANCE) ||
+            (i == MaterialMapIndex.MATERIAL_MAP_PREFILTER) ||
+            (i == MaterialMapIndex.MATERIAL_MAP_CUBEMAP)) rlDisableTextureCubemap();
         else rlDisableTexture();
     }
 
@@ -1717,20 +1677,20 @@ Material* LoadMaterials(const(char)* fileName, int* materialCount)
 
     // TODO: Support IQM and GLTF for materials parsing
 
-version (SUPPORT_FILEFORMAT_MTL) {
+static if (SUPPORT_FILEFORMAT_MTL) {
     if (IsFileExtension(fileName, ".mtl"))
     {
         tinyobj_material_t* mats = null;
 
         int result = tinyobj_parse_mtl_file(&mats, &count, fileName);
-        if (result != TINYOBJ_SUCCESS) TRACELOG(LOG_WARNING, "MATERIAL: [%s] Failed to parse materials file", fileName);
+        if (result != TINYOBJ_SUCCESS) TRACELOG(TraceLogLevel.LOG_WARNING, "MATERIAL: [%s] Failed to parse materials file", fileName);
 
         // TODO: Process materials to return
 
         tinyobj_materials_free(mats, count);
     }
 } else {
-    TRACELOG(LOG_WARNING, "FILEIO: [%s] Failed to load material file", fileName);
+    TRACELOG(TraceLogLevel.LOG_WARNING, "FILEIO: [%s] Failed to load material file", fileName);
 }
 
     // Set materials shader to default (DIFFUSE, SPECULAR, NORMAL)
@@ -1750,7 +1710,7 @@ version (SUPPORT_FILEFORMAT_MTL) {
 // Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps)
 Material LoadMaterialDefault()
 {
-    Material material = { 0 };
+    Material material = Material.init; // { 0 };
     material.maps = cast(MaterialMap*)RL_CALLOC(MAX_MATERIAL_MAPS, MaterialMap.sizeof);
 
     // Using rlgl default shader
@@ -1758,12 +1718,12 @@ Material LoadMaterialDefault()
     material.shader.locs = rlGetShaderLocsDefault();
 
     // Using rlgl default texture (1x1 pixel, UNCOMPRESSED_R8G8B8A8, 1 mipmap)
-    material.maps[MATERIAL_MAP_DIFFUSE].texture = Texture2D( rlGetTextureIdDefault(), 1, 1, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 );
-    //material.maps[MATERIAL_MAP_NORMAL].texture;         // NOTE: By default, not set
-    //material.maps[MATERIAL_MAP_SPECULAR].texture;       // NOTE: By default, not set
+    material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].texture = Texture2D( rlGetTextureIdDefault(), 1, 1, 1, PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 );
+    //material.maps[MaterialMapIndex.MATERIAL_MAP_NORMAL].texture;         // NOTE: By default, not set
+    //material.maps[MaterialMapIndex.MATERIAL_MAP_SPECULAR].texture;       // NOTE: By default, not set
 
-    material.maps[MATERIAL_MAP_DIFFUSE].color = WHITE;    // Diffuse color
-    material.maps[MATERIAL_MAP_SPECULAR].color = WHITE;   // Specular color
+    material.maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color = WHITE;    // Diffuse color
+    material.maps[MaterialMapIndex.MATERIAL_MAP_SPECULAR].color = WHITE;   // Specular color
 
     return material;
 }
@@ -1783,7 +1743,7 @@ void UnloadMaterial(Material material)
     RL_FREE(material.maps);
 }
 
-// Set texture for a material map type (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...)
+// Set texture for a material map type (MaterialMapIndex.MATERIAL_MAP_DIFFUSE, MaterialMapIndex.MATERIAL_MAP_SPECULAR...)
 // NOTE: Previous texture should be manually unloaded
 void SetMaterialTexture(Material* material, int mapType, Texture2D texture)
 {
@@ -1793,8 +1753,8 @@ void SetMaterialTexture(Material* material, int mapType, Texture2D texture)
 // Set the material for a mesh
 void SetModelMeshMaterial(Model* model, int meshId, int materialId)
 {
-    if (meshId >= model.meshCount) TRACELOG(LOG_WARNING, "MESH: Id greater than mesh count");
-    else if (materialId >= model.materialCount) TRACELOG(LOG_WARNING, "MATERIAL: Id greater than material count");
+    if (meshId >= model.meshCount) TRACELOG(TraceLogLevel.LOG_WARNING, "MESH: Id greater than mesh count");
+    else if (materialId >= model.materialCount) TRACELOG(TraceLogLevel.LOG_WARNING, "MATERIAL: Id greater than material count");
     else  model.meshMaterial[meshId] = materialId;
 }
 
@@ -1803,10 +1763,10 @@ ModelAnimation* LoadModelAnimations(const(char)* fileName, uint* animCount)
 {
     ModelAnimation* animations = null;
 
-version (SUPPORT_FILEFORMAT_IQM) {
+static if (SUPPORT_FILEFORMAT_IQM) {
     if (IsFileExtension(fileName, ".iqm")) animations = LoadModelAnimationsIQM(fileName, animCount);
 }
-version (SUPPORT_FILEFORMAT_GLTF) {
+static if (SUPPORT_FILEFORMAT_GLTF) {
     //if (IsFileExtension(fileName, ".gltf;.glb")) animations = LoadModelAnimationGLTF(fileName, animCount);
 }
 
@@ -1826,7 +1786,7 @@ void UpdateModelAnimation(Model model, ModelAnimation anim, int frame)
             Mesh mesh = model.meshes[m];
             if (mesh.boneIds == null || mesh.boneWeights == null)
             {
-                TRACELOG(LOG_WARNING, "MODEL: UpdateModelAnimation Mesh %i has no connection to bones",m);
+                TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: UpdateModelAnimation Mesh %i has no connection to bones",m);
                 continue;
             }
 
@@ -1907,8 +1867,8 @@ void UpdateModelAnimation(Model model, ModelAnimation anim, int frame)
             // Upload new vertex data to GPU for model drawing
             // Only update data when values changed.
             if (updated){
-                rlUpdateVertexBuffer(mesh.vboId[0], mesh.animVertices, mesh.vertexCount*3*float.sizeof, 0);    // Update vertex position
-                rlUpdateVertexBuffer(mesh.vboId[2], mesh.animNormals, mesh.vertexCount*3*float.sizeof, 0);     // Update vertex normals
+                rlUpdateVertexBuffer(mesh.vboId[0], mesh.animVertices, mesh.vertexCount*3*int(float.sizeof), 0);    // Update vertex position
+                rlUpdateVertexBuffer(mesh.vboId[2], mesh.animNormals, mesh.vertexCount*3*int(float.sizeof), 0);     // Update vertex normals
             }
         }
     }
@@ -1934,7 +1894,7 @@ void UnloadModelAnimation(ModelAnimation anim)
 // NOTE: Only number of bones and parent connections are checked
 bool IsModelAnimationValid(Model model, ModelAnimation anim)
 {
-    int result = true;
+    bool result = true;
 
     if (model.boneCount != anim.boneCount) result = false;
     else
@@ -1948,7 +1908,7 @@ bool IsModelAnimationValid(Model model, ModelAnimation anim)
     return result;
 }
 
-version (SUPPORT_MESH_GENERATION) {
+static if (SUPPORT_MESH_GENERATION) {
 // Generate polygonal mesh
 Mesh GenMeshPoly(int sides, float radius)
 {
@@ -1980,9 +1940,9 @@ Mesh GenMeshPoly(int sides, float radius)
 
     mesh.vertexCount = vertexCount;
     mesh.triangleCount = sides;
-    mesh.vertices = cast(float*)RL_MALLOC(mesh.vertexCount*3*float.sizeof);
-    mesh.texcoords = cast(float*)RL_MALLOC(mesh.vertexCount*2*float.sizeof);
-    mesh.normals = cast(float*)RL_MALLOC(mesh.vertexCount*3*float.sizeof);
+    mesh.vertices = cast(float*)RL_MALLOC(mesh.vertexCount*3*int(float.sizeof));
+    mesh.texcoords = cast(float*)RL_MALLOC(mesh.vertexCount*2*int(float.sizeof));
+    mesh.normals = cast(float*)RL_MALLOC(mesh.vertexCount*3*int(float.sizeof));
 
     // Mesh vertices position array
     for (int i = 0; i < mesh.vertexCount; i++)
@@ -2018,12 +1978,13 @@ Mesh GenMeshPoly(int sides, float radius)
     return mesh;
 }
 
+version = CUSTOM_MESH_GEN_PLANE;
+
 // Generate plane mesh (with subdivisions)
 Mesh GenMeshPlane(float width, float length, int resX, int resZ)
 {
     Mesh mesh = { 0 };
 
-version = CUSTOM_MESH_GEN_PLANE;
 version (CUSTOM_MESH_GEN_PLANE) {
     resX++;
     resZ++;
@@ -2078,10 +2039,10 @@ version (CUSTOM_MESH_GEN_PLANE) {
 
     mesh.vertexCount = vertexCount;
     mesh.triangleCount = numFaces*2;
-    mesh.vertices = cast(float*)RL_MALLOC(mesh.vertexCount*3*float.sizeof);
-    mesh.texcoords = cast(float*)RL_MALLOC(mesh.vertexCount*2*float.sizeof);
-    mesh.normals = cast(float*)RL_MALLOC(mesh.vertexCount*3*float.sizeof);
-    mesh.indices = cast(ushort*)RL_MALLOC(mesh.triangleCount*3*ushort.sizeof);
+    mesh.vertices = cast(float*)RL_MALLOC(mesh.vertexCount*3*int(float.sizeof));
+    mesh.texcoords = cast(float*)RL_MALLOC(mesh.vertexCount*2*int(float.sizeof));
+    mesh.normals = cast(float*)RL_MALLOC(mesh.vertexCount*3*int(float.sizeof));
+    mesh.indices = cast(ushort*)RL_MALLOC(mesh.triangleCount*3*int(ushort.sizeof));
 
     // Mesh vertices position array
     for (int i = 0; i < mesh.vertexCount; i++)
@@ -2107,7 +2068,7 @@ version (CUSTOM_MESH_GEN_PLANE) {
     }
 
     // Mesh indices array initialization
-    for (int i = 0; i < mesh.triangleCount*3; i++) mesh.indices[i] = triangles[i];
+    for (int i = 0; i < mesh.triangleCount*3; i++) mesh.indices[i] = cast(ushort)triangles[i];
 
     RL_FREE(vertices);
     RL_FREE(normals);
@@ -2118,12 +2079,13 @@ version (CUSTOM_MESH_GEN_PLANE) {
 
     par_shapes_mesh* plane = par_shapes_create_plane(resX, resZ);   // No normals/texcoords generated!!!
     par_shapes_scale(plane, width, length, 1.0f);
-    par_shapes_rotate(plane, -PI/2.0f, float[]( 1, 0, 0 ));
+    float[3] rotate_floats = [1, 0, 0];
+    par_shapes_rotate(plane, -PI/2.0f, args);
     par_shapes_translate(plane, -width/2, 0.0f, length/2);
 
-    mesh.vertices = cast(float*)RL_MALLOC(plane.ntriangles*3*3*float.sizeof);
-    mesh.texcoords = cast(float*)RL_MALLOC(plane.ntriangles*3*2*float.sizeof);
-    mesh.normals = cast(float*)RL_MALLOC(plane.ntriangles*3*3*float.sizeof);
+    mesh.vertices = cast(float*)RL_MALLOC(plane.ntriangles*3*3*int(float.sizeof));
+    mesh.texcoords = cast(float*)RL_MALLOC(plane.ntriangles*3*2*int(float.sizeof));
+    mesh.normals = cast(float*)RL_MALLOC(plane.ntriangles*3*3*int(float.sizeof));
 
     mesh.vertexCount = plane.ntriangles*3;
     mesh.triangleCount = plane.ntriangles;
@@ -2151,12 +2113,12 @@ version (CUSTOM_MESH_GEN_PLANE) {
     return mesh;
 }
 
+version = CUSTOM_MESH_GEN_CUBE;
 // Generated cuboid mesh
 Mesh GenMeshCube(float width, float height, float length)
 {
     Mesh mesh = { 0 };
 
-version = CUSTOM_MESH_GEN_CUBE;
 version (CUSTOM_MESH_GEN_CUBE) {
     float[72] vertices = [
         -width/2, -height/2, length/2,
@@ -2239,18 +2201,18 @@ version (CUSTOM_MESH_GEN_CUBE) {
         -1.0f, 0.0f, 0.0f
     ];
 
-    mesh.vertices = cast(float*)RL_MALLOC(24*3*float.sizeof);
-    memcpy(mesh.vertices, vertices.ptr, 24*3*float.sizeof);
+    mesh.vertices = cast(float*)RL_MALLOC(24*3*int(float.sizeof));
+    memcpy(mesh.vertices, vertices.ptr, 24*3*int(float.sizeof));
 
-    mesh.texcoords = cast(float*)RL_MALLOC(24*2*float.sizeof);
-    memcpy(mesh.texcoords, texcoords.ptr, 24*2*float.sizeof);
+    mesh.texcoords = cast(float*)RL_MALLOC(24*2*int(float.sizeof));
+    memcpy(mesh.texcoords, texcoords.ptr, 24*2*int(float.sizeof));
 
-    mesh.normals = cast(float*)RL_MALLOC(24*3*float.sizeof);
-    memcpy(mesh.normals, normals.ptr, 24*3*float.sizeof);
+    mesh.normals = cast(float*)RL_MALLOC(24*3*int(float.sizeof));
+    memcpy(mesh.normals, normals.ptr, 24*3*int(float.sizeof));
 
-    mesh.indices = cast(ushort*)RL_MALLOC(36*ushort.sizeof);
+    mesh.indices = cast(ushort*)RL_MALLOC(36*int(ushort.sizeof));
 
-    int k = 0;
+    ubyte k = 0;
 
     // Indices can be initialized right now
     for (int i = 0; i < 36; i+=6)
@@ -2286,9 +2248,9 @@ par_shapes_mesh* par_shapes_create_icosahedron();       // 20 sides polyhedron
     par_shapes_translate(cube, -width/2, 0.0f, -length/2);
     par_shapes_compute_normals(cube);
 
-    mesh.vertices = cast(float*)RL_MALLOC(cube.ntriangles*3*3*float.sizeof);
-    mesh.texcoords = cast(float*)RL_MALLOC(cube.ntriangles*3*2*float.sizeof);
-    mesh.normals = cast(float*)RL_MALLOC(cube.ntriangles*3*3*float.sizeof);
+    mesh.vertices = cast(float*)RL_MALLOC(cube.ntriangles*3*3*int(float.sizeof));
+    mesh.texcoords = cast(float*)RL_MALLOC(cube.ntriangles*3*2*int(float.sizeof));
+    mesh.normals = cast(float*)RL_MALLOC(cube.ntriangles*3*3*int(float.sizeof));
 
     mesh.vertexCount = cube.ntriangles*3;
     mesh.triangleCount = cube.ntriangles;
@@ -2327,9 +2289,9 @@ Mesh GenMeshSphere(float radius, int rings, int slices)
         par_shapes_scale(sphere, radius, radius, radius);
         // NOTE: Soft normals are computed internally
 
-        mesh.vertices = cast(float*)RL_MALLOC(sphere.ntriangles*3*3*float.sizeof);
-        mesh.texcoords = cast(float*)RL_MALLOC(sphere.ntriangles*3*2*float.sizeof);
-        mesh.normals = cast(float*)RL_MALLOC(sphere.ntriangles*3*3*float.sizeof);
+        mesh.vertices = cast(float*)RL_MALLOC(sphere.ntriangles*3*3*int(float.sizeof));
+        mesh.texcoords = cast(float*)RL_MALLOC(sphere.ntriangles*3*2*int(float.sizeof));
+        mesh.normals = cast(float*)RL_MALLOC(sphere.ntriangles*3*3*int(float.sizeof));
 
         mesh.vertexCount = sphere.ntriangles*3;
         mesh.triangleCount = sphere.ntriangles;
@@ -2353,7 +2315,7 @@ Mesh GenMeshSphere(float radius, int rings, int slices)
         // Upload vertex data to GPU (static mesh)
         UploadMesh(&mesh, false);
     }
-    else TRACELOG(LOG_WARNING, "MESH: Failed to generate mesh: sphere");
+    else TRACELOG(TraceLogLevel.LOG_WARNING, "MESH: Failed to generate mesh: sphere");
 
     return mesh;
 }
@@ -2371,9 +2333,9 @@ Mesh GenMeshHemiSphere(float radius, int rings, int slices)
         par_shapes_scale(sphere, radius, radius, radius);
         // NOTE: Soft normals are computed internally
 
-        mesh.vertices = cast(float*)RL_MALLOC(sphere.ntriangles*3*3*float.sizeof);
-        mesh.texcoords = cast(float*)RL_MALLOC(sphere.ntriangles*3*2*float.sizeof);
-        mesh.normals = cast(float*)RL_MALLOC(sphere.ntriangles*3*3*float.sizeof);
+        mesh.vertices = cast(float*)RL_MALLOC(sphere.ntriangles*3*3*int(float.sizeof));
+        mesh.texcoords = cast(float*)RL_MALLOC(sphere.ntriangles*3*2*int(float.sizeof));
+        mesh.normals = cast(float*)RL_MALLOC(sphere.ntriangles*3*3*int(float.sizeof));
 
         mesh.vertexCount = sphere.ntriangles*3;
         mesh.triangleCount = sphere.ntriangles;
@@ -2397,7 +2359,7 @@ Mesh GenMeshHemiSphere(float radius, int rings, int slices)
         // Upload vertex data to GPU (static mesh)
         UploadMesh(&mesh, false);
     }
-    else TRACELOG(LOG_WARNING, "MESH: Failed to generate mesh: hemisphere");
+    else TRACELOG(TraceLogLevel.LOG_WARNING, "MESH: Failed to generate mesh: hemisphere");
 
     return mesh;
 }
@@ -2415,28 +2377,28 @@ Mesh GenMeshCylinder(float radius, float height, int slices)
         // Height and radius are both 1.0, but they can easily be changed with par_shapes_scale
         par_shapes_mesh* cylinder = par_shapes_create_cylinder(slices, 8);
         par_shapes_scale(cylinder, radius, radius, height);
-        par_shapes_rotate(cylinder, -PI/2.0f, float[]( 1, 0, 0 ));
-        par_shapes_rotate(cylinder, PI/2.0f, float[]( 0, 1, 0 ));
+        par_shapes_rotate(cylinder, -PI/2.0f, Float3( 1, 0, 0 ));
+        par_shapes_rotate(cylinder, PI/2.0f, Float3( 0, 1, 0 ));
 
         // Generate an orientable disk shape (top cap)
-        par_shapes_mesh* capTop = par_shapes_create_disk(radius, slices, float[]( 0, 0, 0 ), float[]( 0, 0, 1 ));
+        par_shapes_mesh* capTop = par_shapes_create_disk(radius, slices, Float3( 0, 0, 0 ), Float3( 0, 0, 1 ));
         capTop.tcoords = mixin(PAR_MALLOC!(`float`, `2*capTop.npoints`));
         for (int i = 0; i < 2*capTop.npoints; i++) capTop.tcoords[i] = 0.0f;
-        par_shapes_rotate(capTop, -PI/2.0f, float[]( 1, 0, 0 ));
+        par_shapes_rotate(capTop, -PI/2.0f, Float3( 1, 0, 0 ));
         par_shapes_translate(capTop, 0, height, 0);
 
         // Generate an orientable disk shape (bottom cap)
-        par_shapes_mesh* capBottom = par_shapes_create_disk(radius, slices, float[]( 0, 0, 0 ), float[]( 0, 0, -1 ));
+        par_shapes_mesh* capBottom = par_shapes_create_disk(radius, slices, Float3( 0, 0, 0 ), Float3( 0, 0, -1 ));
         capBottom.tcoords = mixin(PAR_MALLOC!(`float`, `2*capBottom.npoints`));
         for (int i = 0; i < 2*capBottom.npoints; i++) capBottom.tcoords[i] = 0.95f;
-        par_shapes_rotate(capBottom, PI/2.0f, float[]( 1, 0, 0 ));
+        par_shapes_rotate(capBottom, PI/2.0f, Float3( 1, 0, 0 ));
 
         par_shapes_merge_and_free(cylinder, capTop);
         par_shapes_merge_and_free(cylinder, capBottom);
 
-        mesh.vertices = cast(float*)RL_MALLOC(cylinder.ntriangles*3*3*float.sizeof);
-        mesh.texcoords = cast(float*)RL_MALLOC(cylinder.ntriangles*3*2*float.sizeof);
-        mesh.normals = cast(float*)RL_MALLOC(cylinder.ntriangles*3*3*float.sizeof);
+        mesh.vertices = cast(float*)RL_MALLOC(cylinder.ntriangles*3*3*int(float.sizeof));
+        mesh.texcoords = cast(float*)RL_MALLOC(cylinder.ntriangles*3*2*int(float.sizeof));
+        mesh.normals = cast(float*)RL_MALLOC(cylinder.ntriangles*3*3*int(float.sizeof));
 
         mesh.vertexCount = cylinder.ntriangles*3;
         mesh.triangleCount = cylinder.ntriangles;
@@ -2460,7 +2422,7 @@ Mesh GenMeshCylinder(float radius, float height, int slices)
         // Upload vertex data to GPU (static mesh)
         UploadMesh(&mesh, false);
     }
-    else TRACELOG(LOG_WARNING, "MESH: Failed to generate mesh: cylinder");
+    else TRACELOG(TraceLogLevel.LOG_WARNING, "MESH: Failed to generate mesh: cylinder");
 
     return mesh;
 }
@@ -2478,20 +2440,20 @@ Mesh GenMeshCone(float radius, float height, int slices)
         // Height and radius are both 1.0, but they can easily be changed with par_shapes_scale
         par_shapes_mesh* cone = par_shapes_create_cone(slices, 8);
         par_shapes_scale(cone, radius, radius, height);
-        par_shapes_rotate(cone, -PI/2.0f, float[]( 1, 0, 0 ));
-        par_shapes_rotate(cone, PI/2.0f, float[]( 0, 1, 0 ));
+        par_shapes_rotate(cone, -PI/2.0f, Float3( 1, 0, 0 ));
+        par_shapes_rotate(cone, PI/2.0f, Float3( 0, 1, 0 ));
 
         // Generate an orientable disk shape (bottom cap)
-        par_shapes_mesh* capBottom = par_shapes_create_disk(radius, slices, float[]( 0, 0, 0 ), float[]( 0, 0, -1 ));
+        par_shapes_mesh* capBottom = par_shapes_create_disk(radius, slices, Float3( 0, 0, 0 ), Float3( 0, 0, -1 ));
         capBottom.tcoords = mixin(PAR_MALLOC!(`float`, `2*capBottom.npoints`));
         for (int i = 0; i < 2*capBottom.npoints; i++) capBottom.tcoords[i] = 0.95f;
-        par_shapes_rotate(capBottom, PI/2.0f, float[]( 1, 0, 0 ));
+        par_shapes_rotate(capBottom, PI/2.0f, Float3( 1, 0, 0 ));
 
         par_shapes_merge_and_free(cone, capBottom);
 
-        mesh.vertices = cast(float*)RL_MALLOC(cone.ntriangles*3*3*float.sizeof);
-        mesh.texcoords = cast(float*)RL_MALLOC(cone.ntriangles*3*2*float.sizeof);
-        mesh.normals = cast(float*)RL_MALLOC(cone.ntriangles*3*3*float.sizeof);
+        mesh.vertices = cast(float*)RL_MALLOC(cone.ntriangles*3*3*int(float.sizeof));
+        mesh.texcoords = cast(float*)RL_MALLOC(cone.ntriangles*3*2*int(float.sizeof));
+        mesh.normals = cast(float*)RL_MALLOC(cone.ntriangles*3*3*int(float.sizeof));
 
         mesh.vertexCount = cone.ntriangles*3;
         mesh.triangleCount = cone.ntriangles;
@@ -2515,7 +2477,7 @@ Mesh GenMeshCone(float radius, float height, int slices)
         // Upload vertex data to GPU (static mesh)
         UploadMesh(&mesh, false);
     }
-    else TRACELOG(LOG_WARNING, "MESH: Failed to generate mesh: cone");
+    else TRACELOG(TraceLogLevel.LOG_WARNING, "MESH: Failed to generate mesh: cone");
 
     return mesh;
 }
@@ -2535,9 +2497,9 @@ Mesh GenMeshTorus(float radius, float size, int radSeg, int sides)
         par_shapes_mesh* torus = par_shapes_create_torus(radSeg, sides, radius);
         par_shapes_scale(torus, size/2, size/2, size/2);
 
-        mesh.vertices = cast(float*)RL_MALLOC(torus.ntriangles*3*3*float.sizeof);
-        mesh.texcoords = cast(float*)RL_MALLOC(torus.ntriangles*3*2*float.sizeof);
-        mesh.normals = cast(float*)RL_MALLOC(torus.ntriangles*3*3*float.sizeof);
+        mesh.vertices = cast(float*)RL_MALLOC(torus.ntriangles*3*3*int(float.sizeof));
+        mesh.texcoords = cast(float*)RL_MALLOC(torus.ntriangles*3*2*int(float.sizeof));
+        mesh.normals = cast(float*)RL_MALLOC(torus.ntriangles*3*3*int(float.sizeof));
 
         mesh.vertexCount = torus.ntriangles*3;
         mesh.triangleCount = torus.ntriangles;
@@ -2561,7 +2523,7 @@ Mesh GenMeshTorus(float radius, float size, int radSeg, int sides)
         // Upload vertex data to GPU (static mesh)
         UploadMesh(&mesh, false);
     }
-    else TRACELOG(LOG_WARNING, "MESH: Failed to generate mesh: torus");
+    else TRACELOG(TraceLogLevel.LOG_WARNING, "MESH: Failed to generate mesh: torus");
 
     return mesh;
 }
@@ -2579,9 +2541,9 @@ Mesh GenMeshKnot(float radius, float size, int radSeg, int sides)
         par_shapes_mesh* knot = par_shapes_create_trefoil_knot(radSeg, sides, radius);
         par_shapes_scale(knot, size, size, size);
 
-        mesh.vertices = cast(float*)RL_MALLOC(knot.ntriangles*3*3*float.sizeof);
-        mesh.texcoords = cast(float*)RL_MALLOC(knot.ntriangles*3*2*float.sizeof);
-        mesh.normals = cast(float*)RL_MALLOC(knot.ntriangles*3*3*float.sizeof);
+        mesh.vertices = cast(float*)RL_MALLOC(knot.ntriangles*3*3*int(float.sizeof));
+        mesh.texcoords = cast(float*)RL_MALLOC(knot.ntriangles*3*2*int(float.sizeof));
+        mesh.normals = cast(float*)RL_MALLOC(knot.ntriangles*3*3*int(float.sizeof));
 
         mesh.vertexCount = knot.ntriangles*3;
         mesh.triangleCount = knot.ntriangles;
@@ -2605,7 +2567,7 @@ Mesh GenMeshKnot(float radius, float size, int radSeg, int sides)
         // Upload vertex data to GPU (static mesh)
         UploadMesh(&mesh, false);
     }
-    else TRACELOG(LOG_WARNING, "MESH: Failed to generate mesh: knot");
+    else TRACELOG(TraceLogLevel.LOG_WARNING, "MESH: Failed to generate mesh: knot");
 
     return mesh;
 }
@@ -2628,9 +2590,9 @@ Mesh GenMeshHeightmap(Image heightmap, Vector3 size)
 
     mesh.vertexCount = mesh.triangleCount*3;
 
-    mesh.vertices = cast(float*)RL_MALLOC(mesh.vertexCount*3*float.sizeof);
-    mesh.normals = cast(float*)RL_MALLOC(mesh.vertexCount*3*float.sizeof);
-    mesh.texcoords = cast(float*)RL_MALLOC(mesh.vertexCount*2*float.sizeof);
+    mesh.vertices = cast(float*)RL_MALLOC(mesh.vertexCount*3*int(float.sizeof));
+    mesh.normals = cast(float*)RL_MALLOC(mesh.vertexCount*3*int(float.sizeof));
+    mesh.texcoords = cast(float*)RL_MALLOC(mesh.vertexCount*2*int(float.sizeof));
     mesh.colors = null;
 
     int vCounter = 0;       // Used to count vertices float by float
@@ -3047,9 +3009,9 @@ Mesh GenMeshCubicmap(Image cubicmap, Vector3 cubeSize)
     mesh.vertexCount = vCounter;
     mesh.triangleCount = vCounter/3;
 
-    mesh.vertices = cast(float*)RL_MALLOC(mesh.vertexCount*3*float.sizeof);
-    mesh.normals = cast(float*)RL_MALLOC(mesh.vertexCount*3*float.sizeof);
-    mesh.texcoords = cast(float*)RL_MALLOC(mesh.vertexCount*2*float.sizeof);
+    mesh.vertices = cast(float*)RL_MALLOC(mesh.vertexCount*3*int(float.sizeof));
+    mesh.normals = cast(float*)RL_MALLOC(mesh.vertexCount*3*int(float.sizeof));
+    mesh.texcoords = cast(float*)RL_MALLOC(mesh.vertexCount*2*int(float.sizeof));
     mesh.colors = null;
 
     int fCounter = 0;
@@ -3118,7 +3080,7 @@ BoundingBox GetMeshBoundingBox(Mesh mesh)
     }
 
     // Create the bounding box
-    BoundingBox box = { 0 };
+    BoundingBox box = BoundingBox.init; // { 0 };
     box.min = minVertex;
     box.max = maxVertex;
 
@@ -3130,11 +3092,11 @@ BoundingBox GetMeshBoundingBox(Mesh mesh)
 // Implementation base don: https://answers.unity.com/questions/7789/calculating-tangents-vector4.html
 void GenMeshTangents(Mesh* mesh)
 {
-    if (mesh.tangents == null) mesh.tangents = cast(float*)RL_MALLOC(mesh.vertexCount*4*float.sizeof);
+    if (mesh.tangents == null) mesh.tangents = cast(float*)RL_MALLOC(mesh.vertexCount*4*int(float.sizeof));
     else
     {
         RL_FREE(mesh.tangents);
-        mesh.tangents = cast(float*)RL_MALLOC(mesh.vertexCount*4*float.sizeof);
+        mesh.tangents = cast(float*)RL_MALLOC(mesh.vertexCount*4*int(float.sizeof));
     }
 
     Vector3* tan1 = cast(Vector3*)RL_MALLOC(mesh.vertexCount*Vector3.sizeof);
@@ -3207,24 +3169,24 @@ version (COMPUTE_TANGENTS_METHOD_01) {
 
     if (mesh.vboId != null)
     {
-        if (mesh.vboId[SHADER_LOC_VERTEX_TANGENT] != 0)
+        if (mesh.vboId[ShaderLocationIndex.SHADER_LOC_VERTEX_TANGENT] != 0)
         {
             // Upate existing vertex buffer
-            rlUpdateVertexBuffer(mesh.vboId[SHADER_LOC_VERTEX_TANGENT], mesh.tangents, mesh.vertexCount*4*float.sizeof, 0);
+            rlUpdateVertexBuffer(mesh.vboId[ShaderLocationIndex.SHADER_LOC_VERTEX_TANGENT], mesh.tangents, mesh.vertexCount*4*int(float.sizeof), 0);
         }
         else
         {
             // Load a new tangent attributes buffer
-            mesh.vboId[SHADER_LOC_VERTEX_TANGENT] = rlLoadVertexBuffer(mesh.tangents, mesh.vertexCount*4*float.sizeof, false);
+            mesh.vboId[ShaderLocationIndex.SHADER_LOC_VERTEX_TANGENT] = rlLoadVertexBuffer(mesh.tangents, mesh.vertexCount*4*int(float.sizeof), false);
         }
 
         rlEnableVertexArray(mesh.vaoId);
-        rlSetVertexAttribute(4, 4, RL_FLOAT, 0, 0, 0);
+        rlSetVertexAttribute(4, 4, RL_FLOAT, 0, 0, null);
         rlEnableVertexAttribute(4);
         rlDisableVertexArray();
     }
 
-    TRACELOG(LOG_INFO, "MESH: Tangents data computed and uploaded for provided mesh");
+    TRACELOG(TraceLogLevel.LOG_INFO, "MESH: Tangents data computed and uploaded for provided mesh");
 }
 
 // Compute mesh binormals (aka bitangent)
@@ -3265,7 +3227,7 @@ void DrawModelEx(Model model, Vector3 position, Vector3 rotationAxis, float rota
 
     for (int i = 0; i < model.meshCount; i++)
     {
-        Color color = model.materials[model.meshMaterial[i]].maps[MATERIAL_MAP_DIFFUSE].color;
+        Color color = model.materials[model.meshMaterial[i]].maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color;
 
         Color colorTint = WHITE;
         colorTint.r = cast(ubyte)(((cast(float)color.r/255.0)*(cast(float)tint.r/255.0))*255.0f);
@@ -3273,9 +3235,9 @@ void DrawModelEx(Model model, Vector3 position, Vector3 rotationAxis, float rota
         colorTint.b = cast(ubyte)(((cast(float)color.b/255.0)*(cast(float)tint.b/255.0))*255.0f);
         colorTint.a = cast(ubyte)(((cast(float)color.a/255.0)*(cast(float)tint.a/255.0))*255.0f);
 
-        model.materials[model.meshMaterial[i]].maps[MATERIAL_MAP_DIFFUSE].color = colorTint;
+        model.materials[model.meshMaterial[i]].maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color = colorTint;
         DrawMesh(model.meshes[i], model.materials[model.meshMaterial[i]], model.transform);
-        model.materials[model.meshMaterial[i]].maps[MATERIAL_MAP_DIFFUSE].color = color;
+        model.materials[model.meshMaterial[i]].maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color = color;
     }
 }
 
@@ -3719,7 +3681,7 @@ RayCollision GetRayCollisionQuad(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3, Ve
 //----------------------------------------------------------------------------------
 // Module specific Functions Definition
 //----------------------------------------------------------------------------------
-version (SUPPORT_FILEFORMAT_OBJ) {
+static if (SUPPORT_FILEFORMAT_OBJ) {
 // Load OBJ mesh data
 //
 // Keep the following information in mind when reading this
@@ -3728,9 +3690,9 @@ version (SUPPORT_FILEFORMAT_OBJ) {
 //  - the mesh is automatically triangulated by tinyobj
 private Model LoadOBJ(const(char)* fileName)
 {
-    Model model = { 0 };
+    Model model = Model.init; // { 0 };
 
-    tinyobj_attrib_t attrib = { 0 };
+    tinyobj_attrib_t attrib = tinyobj_attrib_t.init; // { 0 };
     tinyobj_shape_t* meshes = null;
     uint meshCount = 0;
 
@@ -3747,14 +3709,14 @@ private Model LoadOBJ(const(char)* fileName)
         const(char)* workingDir = GetDirectoryPath(fileName);
         if (CHDIR(workingDir) != 0)
         {
-            TRACELOG(LOG_WARNING, "MODEL: [%s] Failed to change working directory", workingDir);
+            TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Failed to change working directory", workingDir);
         }
 
         uint flags = TINYOBJ_FLAG_TRIANGULATE;
         int ret = tinyobj_parse_obj(&attrib, &meshes, &meshCount, &materials, &materialCount, fileText, dataSize, flags);
 
-        if (ret != TINYOBJ_SUCCESS) TRACELOG(LOG_WARNING, "MODEL: [%s] Failed to load OBJ data", fileName);
-        else TRACELOG(LOG_INFO, "MODEL: [%s] OBJ data loaded successfully: %i meshes/%i materials", fileName, meshCount, materialCount);
+        if (ret != TINYOBJ_SUCCESS) TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Failed to load OBJ data", fileName);
+        else TRACELOG(TraceLogLevel.LOG_INFO, "MODEL: [%s] OBJ data loaded successfully: %i meshes/%i materials", fileName, meshCount, materialCount);
 
         model.meshCount = materialCount;
 
@@ -3763,19 +3725,19 @@ private Model LoadOBJ(const(char)* fileName)
         {
             model.materialCount = materialCount;
             model.materials = cast(Material*)RL_CALLOC(model.materialCount, Material.sizeof);
-            TraceLog(LOG_INFO, "MODEL: model has %i material meshes", materialCount);
+            TraceLog(TraceLogLevel.LOG_INFO, "MODEL: model has %i material meshes", materialCount);
         }
         else
         {
             model.meshCount = 1;
-            TraceLog(LOG_INFO, "MODEL: No materials, putting all meshes in a default material");
+            TraceLog(TraceLogLevel.LOG_INFO, "MODEL: No materials, putting all meshes in a default material");
         }
 
         model.meshes = cast(Mesh*)RL_CALLOC(model.meshCount, Mesh.sizeof);
         model.meshMaterial = cast(int*)RL_CALLOC(model.meshCount, int.sizeof);
 
         // Count the faces for each material
-        int* matFaces = RL_CALLOC(model.meshCount, int.sizeof);
+        int* matFaces = cast(int*)RL_CALLOC(model.meshCount, int.sizeof);
 
         // iff no materials are present use all faces on one mesh
         if (materialCount > 0)
@@ -3798,10 +3760,10 @@ private Model LoadOBJ(const(char)* fileName)
 
         // Running counts/indexes for each material mesh as we are
         // building them at the same time
-        int* vCount = RL_CALLOC(model.meshCount, int.sizeof);
-        int* vtCount = RL_CALLOC(model.meshCount, int.sizeof);
-        int* vnCount = RL_CALLOC(model.meshCount, int.sizeof);
-        int* faceCount = RL_CALLOC(model.meshCount, int.sizeof);
+        int* vCount = cast(int*)RL_CALLOC(model.meshCount, int.sizeof);
+        int* vtCount = cast(int*)RL_CALLOC(model.meshCount, int.sizeof);
+        int* vnCount = cast(int*)RL_CALLOC(model.meshCount, int.sizeof);
+        int* faceCount = cast(int*)RL_CALLOC(model.meshCount, int.sizeof);
 
         // Allocate space for each of the material meshes
         for (int mi = 0; mi < model.meshCount; mi++)
@@ -3856,29 +3818,29 @@ private Model LoadOBJ(const(char)* fileName)
         for (uint m = 0; m < materialCount; m++)
         {
             // Init material to default
-            // NOTE: Uses default shader, which only supports MATERIAL_MAP_DIFFUSE
+            // NOTE: Uses default shader, which only supports MaterialMapIndex.MATERIAL_MAP_DIFFUSE
             model.materials[m] = LoadMaterialDefault();
 
             // Get default texture, in case no texture is defined
             // NOTE: rlgl default texture is a 1x1 pixel UNCOMPRESSED_R8G8B8A8
-            model.materials[m].maps[MATERIAL_MAP_DIFFUSE].texture = Texture2D( rlGetTextureIdDefault(), 1, 1, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 );
+            model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].texture = Texture2D( rlGetTextureIdDefault(), 1, 1, 1, PixelFormat.PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 );
 
-            if (materials[m].diffuse_texname != null) model.materials[m].maps[MATERIAL_MAP_DIFFUSE].texture = LoadTexture(materials[m].diffuse_texname);  //char *diffuse_texname; // map_Kd
+            if (materials[m].diffuse_texname != null) model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].texture = LoadTexture(materials[m].diffuse_texname);  //char *diffuse_texname; // map_Kd
 
-            model.materials[m].maps[MATERIAL_MAP_DIFFUSE].color = Color( cast(ubyte)(materials[m].diffuse[0]*255.0f), cast(ubyte)(materials[m].diffuse[1]*255.0f), cast(ubyte)(materials[m].diffuse[2]*255.0f), 255 ); //float diffuse[3];
-            model.materials[m].maps[MATERIAL_MAP_DIFFUSE].value = 0.0f;
+            model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].color = Color( cast(ubyte)(materials[m].diffuse[0]*255.0f), cast(ubyte)(materials[m].diffuse[1]*255.0f), cast(ubyte)(materials[m].diffuse[2]*255.0f), 255 ); //float diffuse[3];
+            model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_DIFFUSE].value = 0.0f;
 
-            if (materials[m].specular_texname != null) model.materials[m].maps[MATERIAL_MAP_SPECULAR].texture = LoadTexture(materials[m].specular_texname);  //char *specular_texname; // map_Ks
-            model.materials[m].maps[MATERIAL_MAP_SPECULAR].color = Color( cast(ubyte)(materials[m].specular[0]*255.0f), cast(ubyte)(materials[m].specular[1]*255.0f), cast(ubyte)(materials[m].specular[2]*255.0f), 255 ); //float specular[3];
-            model.materials[m].maps[MATERIAL_MAP_SPECULAR].value = 0.0f;
+            if (materials[m].specular_texname != null) model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_SPECULAR].texture = LoadTexture(materials[m].specular_texname);  //char *specular_texname; // map_Ks
+            model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_SPECULAR].color = Color( cast(ubyte)(materials[m].specular[0]*255.0f), cast(ubyte)(materials[m].specular[1]*255.0f), cast(ubyte)(materials[m].specular[2]*255.0f), 255 ); //float specular[3];
+            model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_SPECULAR].value = 0.0f;
 
-            if (materials[m].bump_texname != null) model.materials[m].maps[MATERIAL_MAP_NORMAL].texture = LoadTexture(materials[m].bump_texname);  //char *bump_texname; // map_bump, bump
-            model.materials[m].maps[MATERIAL_MAP_NORMAL].color = WHITE;
-            model.materials[m].maps[MATERIAL_MAP_NORMAL].value = materials[m].shininess;
+            if (materials[m].bump_texname != null) model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_NORMAL].texture = LoadTexture(materials[m].bump_texname);  //char *bump_texname; // map_bump, bump
+            model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_NORMAL].color = WHITE;
+            model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_NORMAL].value = materials[m].shininess;
 
-            model.materials[m].maps[MATERIAL_MAP_EMISSION].color = Color( cast(ubyte)(materials[m].emission[0]*255.0f), cast(ubyte)(materials[m].emission[1]*255.0f), cast(ubyte)(materials[m].emission[2]*255.0f), 255 ); //float emission[3];
+            model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_EMISSION].color = Color( cast(ubyte)(materials[m].emission[0]*255.0f), cast(ubyte)(materials[m].emission[1]*255.0f), cast(ubyte)(materials[m].emission[2]*255.0f), 255 ); //float emission[3];
 
-            if (materials[m].displacement_texname != null) model.materials[m].maps[MATERIAL_MAP_HEIGHT].texture = LoadTexture(materials[m].displacement_texname);  //char *displacement_texname; // disp
+            if (materials[m].displacement_texname != null) model.materials[m].maps[MaterialMapIndex.MATERIAL_MAP_HEIGHT].texture = LoadTexture(materials[m].displacement_texname);  //char *displacement_texname; // disp
         }
 
         tinyobj_attrib_free(&attrib);
@@ -3895,7 +3857,7 @@ private Model LoadOBJ(const(char)* fileName)
 
         if (CHDIR(currentDir.ptr) != 0)
         {
-            TRACELOG(LOG_WARNING, "MODEL: [%s] Failed to change working directory", currentDir.ptr);
+            TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Failed to change working directory", currentDir.ptr);
         }
     }
 
@@ -3903,7 +3865,7 @@ private Model LoadOBJ(const(char)* fileName)
 }
 }
 
-version (SUPPORT_FILEFORMAT_IQM) {
+static if (SUPPORT_FILEFORMAT_IQM) {
 // Load IQM mesh data
 private Model LoadIQM(const(char)* fileName)
 {
@@ -4001,7 +3963,7 @@ private Model LoadIQM(const(char)* fileName)
         IQM_CUSTOM       = 0x10     // NOTE: Custom vertex values unused by default
     };
 
-    Model model = { 0 };
+    Model model = Model.init; //{ 0 };
 
     IQMMesh* imesh = null;
     IQMTriangle* tri = null;
@@ -4021,28 +3983,28 @@ private Model LoadIQM(const(char)* fileName)
     // Read IQM header
     IQMHeader* iqmHeader = cast(IQMHeader*)fileDataPtr;
 
-    if (memcmp(iqmHeader.magic, IQM_MAGIC, IQM_MAGIC.sizeof) != 0)
+    if (memcmp(iqmHeader.magic.ptr, IQM_MAGIC.ptr, IQM_MAGIC.length) != 0)
     {
-        TRACELOG(LOG_WARNING, "MODEL: [%s] IQM file is not a valid model", fileName);
+        TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] IQM file is not a valid model", fileName);
         return model;
     }
 
     if (iqmHeader.version_ != IQM_VERSION)
     {
-        TRACELOG(LOG_WARNING, "MODEL: [%s] IQM file version not supported (%i)", fileName, iqmHeader.version_);
+        TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] IQM file version not supported (%i)", fileName, iqmHeader.version_);
         return model;
     }
 
     //fileDataPtr += sizeof(IQMHeader);       // Move file data pointer
 
     // Meshes data processing
-    imesh = RL_MALLOC(iqmHeader.num_meshes*IQMMesh.sizeof);
+    imesh = cast(typeof(imesh))RL_MALLOC(iqmHeader.num_meshes*IQMMesh.sizeof);
     //fseek(iqmFile, iqmHeader->ofs_meshes, SEEK_SET);
     //fread(imesh, sizeof(IQMMesh)*iqmHeader->num_meshes, 1, iqmFile);
     memcpy(imesh, fileDataPtr + iqmHeader.ofs_meshes, iqmHeader.num_meshes*IQMMesh.sizeof);
 
     model.meshCount = iqmHeader.num_meshes;
-    model.meshes = RL_CALLOC(model.meshCount, Mesh.sizeof);
+    model.meshes = cast(typeof(model.meshes))RL_CALLOC(model.meshCount, Mesh.sizeof);
 
     model.materialCount = model.meshCount;
     model.materials = cast(Material*)RL_CALLOC(model.materialCount, Material.sizeof);
@@ -4063,28 +4025,28 @@ private Model LoadIQM(const(char)* fileName)
 
         model.materials[i] = LoadMaterialDefault();
 
-        TRACELOG(LOG_DEBUG, "MODEL: [%s] mesh name (%s), material (%s)", fileName, name.ptr, material.ptr);
+        TRACELOG(TraceLogLevel.LOG_DEBUG, "MODEL: [%s] mesh name (%s), material (%s)", fileName, name.ptr, material.ptr);
 
         model.meshes[i].vertexCount = imesh[i].num_vertexes;
 
-        model.meshes[i].vertices = RL_CALLOC(model.meshes[i].vertexCount*3, float.sizeof);       // Default vertex positions
-        model.meshes[i].normals = RL_CALLOC(model.meshes[i].vertexCount*3, float.sizeof);        // Default vertex normals
-        model.meshes[i].texcoords = RL_CALLOC(model.meshes[i].vertexCount*2, float.sizeof);      // Default vertex texcoords
+        model.meshes[i].vertices = cast(typeof(model.meshes[i].vertices))RL_CALLOC(model.meshes[i].vertexCount*3, float.sizeof);       // Default vertex positions
+        model.meshes[i].normals = cast(typeof(model.meshes[i].normals))RL_CALLOC(model.meshes[i].vertexCount*3, float.sizeof);        // Default vertex normals
+        model.meshes[i].texcoords = cast(typeof(model.meshes[i].texcoords))RL_CALLOC(model.meshes[i].vertexCount*2, float.sizeof);      // Default vertex texcoords
 
-        model.meshes[i].boneIds = RL_CALLOC(model.meshes[i].vertexCount*4, ubyte.sizeof);  // Up-to 4 bones supported!
-        model.meshes[i].boneWeights = RL_CALLOC(model.meshes[i].vertexCount*4, float.sizeof);      // Up-to 4 bones supported!
+        model.meshes[i].boneIds = cast(typeof(model.meshes[i].boneIds))RL_CALLOC(model.meshes[i].vertexCount*4, ubyte.sizeof);  // Up-to 4 bones supported!
+        model.meshes[i].boneWeights = cast(typeof(model.meshes[i].boneWeights))RL_CALLOC(model.meshes[i].vertexCount*4, float.sizeof);      // Up-to 4 bones supported!
 
         model.meshes[i].triangleCount = imesh[i].num_triangles;
-        model.meshes[i].indices = RL_CALLOC(model.meshes[i].triangleCount*3, ushort.sizeof);
+        model.meshes[i].indices = cast(typeof(model.meshes[i].indices))RL_CALLOC(model.meshes[i].triangleCount*3, ushort.sizeof);
 
         // Animated verted data, what we actually process for rendering
         // NOTE: Animated vertex should be re-uploaded to GPU (if not using GPU skinning)
-        model.meshes[i].animVertices = RL_CALLOC(model.meshes[i].vertexCount*3, float.sizeof);
-        model.meshes[i].animNormals = RL_CALLOC(model.meshes[i].vertexCount*3, float.sizeof);
+        model.meshes[i].animVertices = cast(typeof(model.meshes[i].animVertices))RL_CALLOC(model.meshes[i].vertexCount*3, float.sizeof);
+        model.meshes[i].animNormals = cast(typeof(model.meshes[i].animNormals))RL_CALLOC(model.meshes[i].vertexCount*3, float.sizeof);
     }
 
     // Triangles data processing
-    tri = RL_MALLOC(iqmHeader.num_triangles*IQMTriangle.sizeof);
+    tri = cast(typeof(tri))RL_MALLOC(iqmHeader.num_triangles*IQMTriangle.sizeof);
     //fseek(iqmFile, iqmHeader->ofs_triangles, SEEK_SET);
     //fread(tri, iqmHeader->num_triangles*sizeof(IQMTriangle), 1, iqmFile);
     memcpy(tri, fileDataPtr + iqmHeader.ofs_triangles, iqmHeader.num_triangles*IQMTriangle.sizeof);
@@ -4098,15 +4060,15 @@ private Model LoadIQM(const(char)* fileName)
             // IQM triangles indexes are stored in counter-clockwise, but raylib processes the index in linear order,
             // expecting they point to the counter-clockwise vertex triangle, so we need to reverse triangle indexes
             // NOTE: raylib renders vertex data in counter-clockwise order (standard convention) by default
-            model.meshes[m].indices[tcounter + 2] = tri[i].vertex[0] - imesh[m].first_vertex;
-            model.meshes[m].indices[tcounter + 1] = tri[i].vertex[1] - imesh[m].first_vertex;
-            model.meshes[m].indices[tcounter] = tri[i].vertex[2] - imesh[m].first_vertex;
+            model.meshes[m].indices[tcounter + 2] = cast(ushort)(tri[i].vertex[0] - imesh[m].first_vertex);
+            model.meshes[m].indices[tcounter + 1] = cast(ushort)(tri[i].vertex[1] - imesh[m].first_vertex);
+            model.meshes[m].indices[tcounter] = cast(ushort)(tri[i].vertex[2] - imesh[m].first_vertex);
             tcounter += 3;
         }
     }
 
     // Vertex arrays data processing
-    va = RL_MALLOC(iqmHeader.num_vertexarrays*IQMVertexArray.sizeof);
+    va = cast(typeof(va))RL_MALLOC(iqmHeader.num_vertexarrays*IQMVertexArray.sizeof);
     //fseek(iqmFile, iqmHeader->ofs_vertexarrays, SEEK_SET);
     //fread(va, iqmHeader->num_vertexarrays*sizeof(IQMVertexArray), 1, iqmFile);
     memcpy(va, fileDataPtr + iqmHeader.ofs_vertexarrays, iqmHeader.num_vertexarrays*IQMVertexArray.sizeof);
@@ -4117,60 +4079,60 @@ private Model LoadIQM(const(char)* fileName)
         {
             case IQM_POSITION:
             {
-                vertex = RL_MALLOC(iqmHeader.num_vertexes*3*float.sizeof);
+                vertex = cast(typeof(vertex))RL_MALLOC(iqmHeader.num_vertexes*3*int(float.sizeof));
                 //fseek(iqmFile, va[i].offset, SEEK_SET);
                 //fread(vertex, iqmHeader->num_vertexes*3*sizeof(float), 1, iqmFile);
-                memcpy(vertex, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*3*float.sizeof);
+                memcpy(vertex, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*3*int(float.sizeof));
 
                 for (uint m = 0; m < iqmHeader.num_meshes; m++)
                 {
                     int vCounter = 0;
-                    for (uint i = imesh[m].first_vertex*3; i < (imesh[m].first_vertex + imesh[m].num_vertexes)*3; i++)
+                    for (uint j = imesh[m].first_vertex*3; j < (imesh[m].first_vertex + imesh[m].num_vertexes)*3; j++)
                     {
-                        model.meshes[m].vertices[vCounter] = vertex[i];
-                        model.meshes[m].animVertices[vCounter] = vertex[i];
+                        model.meshes[m].vertices[vCounter] = vertex[j];
+                        model.meshes[m].animVertices[vCounter] = vertex[j];
                         vCounter++;
                     }
                 }
             } break;
             case IQM_NORMAL:
             {
-                normal = RL_MALLOC(iqmHeader.num_vertexes*3*float.sizeof);
+                normal = cast(typeof(normal))RL_MALLOC(iqmHeader.num_vertexes*3*int(float.sizeof));
                 //fseek(iqmFile, va[i].offset, SEEK_SET);
                 //fread(normal, iqmHeader->num_vertexes*3*sizeof(float), 1, iqmFile);
-                memcpy(normal, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*3*float.sizeof);
+                memcpy(normal, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*3*int(float.sizeof));
 
                 for (uint m = 0; m < iqmHeader.num_meshes; m++)
                 {
                     int vCounter = 0;
-                    for (uint i = imesh[m].first_vertex*3; i < (imesh[m].first_vertex + imesh[m].num_vertexes)*3; i++)
+                    for (uint j = imesh[m].first_vertex*3; j < (imesh[m].first_vertex + imesh[m].num_vertexes)*3; j++)
                     {
-                        model.meshes[m].normals[vCounter] = normal[i];
-                        model.meshes[m].animNormals[vCounter] = normal[i];
+                        model.meshes[m].normals[vCounter] = normal[j];
+                        model.meshes[m].animNormals[vCounter] = normal[j];
                         vCounter++;
                     }
                 }
             } break;
             case IQM_TEXCOORD:
             {
-                text = RL_MALLOC(iqmHeader.num_vertexes*2*float.sizeof);
+                text = cast(typeof(text))RL_MALLOC(iqmHeader.num_vertexes*2*int(float.sizeof));
                 //fseek(iqmFile, va[i].offset, SEEK_SET);
                 //fread(text, iqmHeader->num_vertexes*2*sizeof(float), 1, iqmFile);
-                memcpy(text, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*2*float.sizeof);
+                memcpy(text, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*2*int(float.sizeof));
 
                 for (uint m = 0; m < iqmHeader.num_meshes; m++)
                 {
                     int vCounter = 0;
-                    for (uint i = imesh[m].first_vertex*2; i < (imesh[m].first_vertex + imesh[m].num_vertexes)*2; i++)
+                    for (uint j = imesh[m].first_vertex*2; j < (imesh[m].first_vertex + imesh[m].num_vertexes)*2; j++)
                     {
-                        model.meshes[m].texcoords[vCounter] = text[i];
+                        model.meshes[m].texcoords[vCounter] = text[j];
                         vCounter++;
                     }
                 }
             } break;
             case IQM_BLENDINDEXES:
             {
-                blendi = RL_MALLOC(iqmHeader.num_vertexes*4*char.sizeof);
+                blendi = cast(typeof(blendi))RL_MALLOC(iqmHeader.num_vertexes*4*char.sizeof);
                 //fseek(iqmFile, va[i].offset, SEEK_SET);
                 //fread(blendi, iqmHeader->num_vertexes*4*sizeof(char), 1, iqmFile);
                 memcpy(blendi, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*4*char.sizeof);
@@ -4178,45 +4140,45 @@ private Model LoadIQM(const(char)* fileName)
                 for (uint m = 0; m < iqmHeader.num_meshes; m++)
                 {
                     int boneCounter = 0;
-                    for (uint i = imesh[m].first_vertex*4; i < (imesh[m].first_vertex + imesh[m].num_vertexes)*4; i++)
+                    for (uint j = imesh[m].first_vertex*4; j < (imesh[m].first_vertex + imesh[m].num_vertexes)*4; j++)
                     {
-                        model.meshes[m].boneIds[boneCounter] = blendi[i];
+                        model.meshes[m].boneIds[boneCounter] = blendi[j];
                         boneCounter++;
                     }
                 }
             } break;
             case IQM_BLENDWEIGHTS:
             {
-                blendw = RL_MALLOC(iqmHeader.num_vertexes*4*ubyte.sizeof);
+                blendw = cast(typeof(blendw))RL_MALLOC(iqmHeader.num_vertexes*4*int(ubyte.sizeof));
                 //fseek(iqmFile, va[i].offset, SEEK_SET);
                 //fread(blendw, iqmHeader->num_vertexes*4*sizeof(unsigned char), 1, iqmFile);
-                memcpy(blendw, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*4*ubyte.sizeof);
+                memcpy(blendw, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*4*int(ubyte.sizeof));
 
                 for (uint m = 0; m < iqmHeader.num_meshes; m++)
                 {
                     int boneCounter = 0;
-                    for (uint i = imesh[m].first_vertex*4; i < (imesh[m].first_vertex + imesh[m].num_vertexes)*4; i++)
+                    for (uint j = imesh[m].first_vertex*4; j < (imesh[m].first_vertex + imesh[m].num_vertexes)*4; j++)
                     {
-                        model.meshes[m].boneWeights[boneCounter] = blendw[i]/255.0f;
+                        model.meshes[m].boneWeights[boneCounter] = blendw[j]/255.0f;
                         boneCounter++;
                     }
                 }
             } break;
             case IQM_COLOR:
             {
-                color = RL_MALLOC(iqmHeader.num_vertexes*4*ubyte.sizeof);
+                color = cast(typeof(color))RL_MALLOC(iqmHeader.num_vertexes*4*int(ubyte.sizeof));
                 //fseek(iqmFile, va[i].offset, SEEK_SET);
                 //fread(blendw, iqmHeader->num_vertexes*4*sizeof(unsigned char), 1, iqmFile);
-                memcpy(color, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*4*ubyte.sizeof);
+                memcpy(color, fileDataPtr + va[i].offset, iqmHeader.num_vertexes*4*int(ubyte.sizeof));
 
                 for (uint m = 0; m < iqmHeader.num_meshes; m++)
                 {
-                    model.meshes[m].colors = RL_CALLOC(model.meshes[m].vertexCount*4, ubyte.sizeof);
+                    model.meshes[m].colors = cast(typeof(model.meshes[m].colors))RL_CALLOC(model.meshes[m].vertexCount*4, ubyte.sizeof);
 
                     int vCounter = 0;
-                    for (uint i = imesh[m].first_vertex*4; i < (imesh[m].first_vertex + imesh[m].num_vertexes)*4; i++)
+                    for (uint j = imesh[m].first_vertex*4; j < (imesh[m].first_vertex + imesh[m].num_vertexes)*4; j++)
                     {
-                        model.meshes[m].colors[vCounter] = color[i];
+                        model.meshes[m].colors[vCounter] = color[j];
                         vCounter++;
                     }
                 }
@@ -4225,14 +4187,14 @@ private Model LoadIQM(const(char)* fileName)
     }
 
     // Bones (joints) data processing
-    ijoint = RL_MALLOC(iqmHeader.num_joints*IQMJoint.sizeof);
+    ijoint = cast(typeof(ijoint))RL_MALLOC(iqmHeader.num_joints*IQMJoint.sizeof);
     //fseek(iqmFile, iqmHeader->ofs_joints, SEEK_SET);
     //fread(ijoint, iqmHeader->num_joints*sizeof(IQMJoint), 1, iqmFile);
     memcpy(ijoint, fileDataPtr + iqmHeader.ofs_joints, iqmHeader.num_joints*IQMJoint.sizeof);
 
     model.boneCount = iqmHeader.num_joints;
-    model.bones = RL_MALLOC(iqmHeader.num_joints*BoneInfo.sizeof);
-    model.bindPose = RL_MALLOC(iqmHeader.num_joints*Transform.sizeof);
+    model.bones = cast(typeof(model.bones))RL_MALLOC(iqmHeader.num_joints*BoneInfo.sizeof);
+    model.bindPose = cast(typeof(model.bindPose))RL_MALLOC(iqmHeader.num_joints*Transform.sizeof);
 
     for (uint i = 0; i < iqmHeader.num_joints; i++)
     {
@@ -4240,7 +4202,7 @@ private Model LoadIQM(const(char)* fileName)
         model.bones[i].parent = ijoint[i].parent;
         //fseek(iqmFile, iqmHeader->ofs_text + ijoint[i].name, SEEK_SET);
         //fread(model.bones[i].name, BONE_NAME_LENGTH*sizeof(char), 1, iqmFile);
-        memcpy(model.bones[i].name, fileDataPtr + iqmHeader.ofs_text + ijoint[i].name, BONE_NAME_LENGTH*char.sizeof);
+        memcpy(model.bones[i].name.ptr, fileDataPtr + iqmHeader.ofs_text + ijoint[i].name, BONE_NAME_LENGTH*char.sizeof);
 
         // Bind pose (base pose)
         model.bindPose[i].translation.x = ijoint[i].translate[0];
@@ -4331,54 +4293,54 @@ private ModelAnimation* LoadModelAnimationsIQM(const(char)* fileName, uint* anim
     // Read IQM header
     IQMHeader* iqmHeader = cast(IQMHeader*)fileDataPtr;
 
-    if (memcmp(iqmHeader.magic, IQM_MAGIC, IQM_MAGIC.sizeof) != 0)
+    if (memcmp(iqmHeader.magic.ptr, IQM_MAGIC.ptr, IQM_MAGIC.sizeof) != 0)
     {
-        TRACELOG(LOG_WARNING, "MODEL: [%s] IQM file is not a valid model", fileName);
+        TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] IQM file is not a valid model", fileName);
         return null;
     }
 
     if (iqmHeader.version_ != IQM_VERSION)
     {
-        TRACELOG(LOG_WARNING, "MODEL: [%s] IQM file version not supported (%i)", fileName, iqmHeader.version_);
+        TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] IQM file version not supported (%i)", fileName, iqmHeader.version_);
         return null;
     }
 
     // Get bones data
-    IQMPose* poses = RL_MALLOC(iqmHeader.num_poses*IQMPose.sizeof);
+    IQMPose* poses = cast(IQMPose*)RL_MALLOC(iqmHeader.num_poses*IQMPose.sizeof);
     //fseek(iqmFile, iqmHeader->ofs_poses, SEEK_SET);
     //fread(poses, iqmHeader->num_poses*sizeof(IQMPose), 1, iqmFile);
     memcpy(poses, fileDataPtr + iqmHeader.ofs_poses, iqmHeader.num_poses*IQMPose.sizeof);
 
     // Get animations data
     *animCount = iqmHeader.num_anims;
-    IQMAnim* anim = RL_MALLOC(iqmHeader.num_anims*IQMAnim.sizeof);
+    IQMAnim* anim = cast(IQMAnim*)RL_MALLOC(iqmHeader.num_anims*IQMAnim.sizeof);
     //fseek(iqmFile, iqmHeader->ofs_anims, SEEK_SET);
     //fread(anim, iqmHeader->num_anims*sizeof(IQMAnim), 1, iqmFile);
     memcpy(anim, fileDataPtr + iqmHeader.ofs_anims, iqmHeader.num_anims*IQMAnim.sizeof);
 
-    ModelAnimation* animations = RL_MALLOC(iqmHeader.num_anims*ModelAnimation.sizeof);
+    ModelAnimation* animations = cast(ModelAnimation*)RL_MALLOC(iqmHeader.num_anims*ModelAnimation.sizeof);
 
     // frameposes
-    ushort* framedata = RL_MALLOC(iqmHeader.num_frames*iqmHeader.num_framechannels*ushort.sizeof);
+    ushort* framedata = cast(ushort*)RL_MALLOC(iqmHeader.num_frames*iqmHeader.num_framechannels*int(ushort.sizeof));
     //fseek(iqmFile, iqmHeader->ofs_frames, SEEK_SET);
     //fread(framedata, iqmHeader->num_frames*iqmHeader->num_framechannels*sizeof(unsigned short), 1, iqmFile);
-    memcpy(framedata, fileDataPtr + iqmHeader.ofs_frames, iqmHeader.num_frames*iqmHeader.num_framechannels*ushort.sizeof);
+    memcpy(framedata, fileDataPtr + iqmHeader.ofs_frames, iqmHeader.num_frames*iqmHeader.num_framechannels*int(ushort.sizeof));
 
     for (uint a = 0; a < iqmHeader.num_anims; a++)
     {
         animations[a].frameCount = anim[a].num_frames;
         animations[a].boneCount = iqmHeader.num_poses;
-        animations[a].bones = RL_MALLOC(iqmHeader.num_poses*BoneInfo.sizeof);
-        animations[a].framePoses = RL_MALLOC(anim[a].num_frames*(Transform*).sizeof);
+        animations[a].bones = cast(typeof(animations[a].bones))RL_MALLOC(iqmHeader.num_poses*BoneInfo.sizeof);
+        animations[a].framePoses = cast(typeof(animations[a].framePoses))RL_MALLOC(anim[a].num_frames*(Transform*).sizeof);
         // animations[a].framerate = anim.framerate;     // TODO: Use framerate?
 
         for (uint j = 0; j < iqmHeader.num_poses; j++)
         {
-            strcpy(animations[a].bones[j].name, "ANIMJOINTNAME");
+            strcpy(animations[a].bones[j].name.ptr, "ANIMJOINTNAME");
             animations[a].bones[j].parent = poses[j].parent;
         }
 
-        for (uint j = 0; j < anim[a].num_frames; j++) animations[a].framePoses[j] = RL_MALLOC(iqmHeader.num_poses*Transform.sizeof);
+        for (uint j = 0; j < anim[a].num_frames; j++) animations[a].framePoses[j] = cast(typeof(animations[a].framePoses[j]))RL_MALLOC(iqmHeader.num_poses*Transform.sizeof);
 
         int dcounter = anim[a].first_frame*iqmHeader.num_framechannels;
 
@@ -4497,11 +4459,11 @@ private ModelAnimation* LoadModelAnimationsIQM(const(char)* fileName, uint* anim
 
 }
 
-version (SUPPORT_FILEFORMAT_GLTF) {
+static if (SUPPORT_FILEFORMAT_GLTF) {
 // Load image from different glTF provided methods (uri, path, buffer_view)
 private Image LoadImageFromCgltfImage(cgltf_image* cgltfImage, const(char)* texPath)
 {
-    Image image = { 0 };
+    Image image = Image.init; // { 0 };
 
     if (cgltfImage.uri != null)     // Check if image data is provided as a uri (base64 or path)
     {
@@ -4518,14 +4480,14 @@ private Image LoadImageFromCgltfImage(cgltf_image* cgltfImage, const(char)* texP
             int i = 0;
             while ((cgltfImage.uri[i] != ',') && (cgltfImage.uri[i] != 0)) i++;
 
-            if (cgltfImage.uri[i] == 0) TRACELOG(LOG_WARNING, "IMAGE: glTF data URI is not a valid image");
+            if (cgltfImage.uri[i] == 0) TRACELOG(TraceLogLevel.LOG_WARNING, "IMAGE: glTF data URI is not a valid image");
             else
             {
                 int base64Size = cast(int)strlen(cgltfImage.uri + i + 1);
                 int outSize = 3*(base64Size/4);         // TODO: Consider padding (-numberOfPaddingCharacters)
                 void* data = null;
 
-                cgltf_options options = { 0 };
+                cgltf_options options = cgltf_options.init; // { 0 };
                 cgltf_result result = cgltf_load_buffer_base64(&options, outSize, cgltfImage.uri + i + 1, &data);
 
                 if (result == cgltf_result_success)
@@ -4542,7 +4504,7 @@ private Image LoadImageFromCgltfImage(cgltf_image* cgltfImage, const(char)* texP
     }
     else if (cgltfImage.buffer_view.buffer.data != null)    // Check if image is provided as data buffer
     {
-        ubyte* data = RL_MALLOC(cgltfImage.buffer_view.size);
+        ubyte* data = cast(ubyte*)RL_MALLOC(cgltfImage.buffer_view.size);
         int offset = cast(int)cgltfImage.buffer_view.offset;
         int stride = cast(int)cgltfImage.buffer_view.stride? cast(int)cgltfImage.buffer_view.stride : 1;
 
@@ -4559,7 +4521,7 @@ private Image LoadImageFromCgltfImage(cgltf_image* cgltfImage, const(char)* texP
             (strcmp(cgltfImage.mime_type, "image/png") == 0)) image = LoadImageFromMemory(".png", data, cast(int)cgltfImage.buffer_view.size);
         else if ((strcmp(cgltfImage.mime_type, "image\\/jpeg") == 0) ||
                  (strcmp(cgltfImage.mime_type, "image/jpeg") == 0)) image = LoadImageFromMemory(".jpg", data, cast(int)cgltfImage.buffer_view.size);
-        else TRACELOG(LOG_WARNING, "MODEL: glTF image data MIME type not recognized", TextFormat("%s/%s", texPath, cgltfImage.uri));
+        else TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: glTF image data MIME type not recognized", TextFormat("%s/%s", texPath, cgltfImage.uri));
 
         RL_FREE(data);
     }
@@ -4598,7 +4560,7 @@ private Model LoadGLTF(const(char)* fileName)
     enum string LOAD_ATTRIBUTE(string accesor, string numComp, string dataType, string dstPtr) = `
     {
         int n = 0;
-        dataType* buffer = cast(dataType*)` ~ accesor ~ `.buffer_view.buffer.data + ` ~ accesor ~ `.buffer_view.offset/sizeofcast(dataType) + ` ~ accesor ~ `.offset/` ~ dataType ~ `.sizeof;
+        ` ~ dataType ~ `* buffer = cast(` ~ dataType ~ `*)` ~ accesor ~ `.buffer_view.buffer.data + ` ~ accesor ~ `.buffer_view.offset/(` ~ dataType ~ `).sizeof + ` ~ accesor ~ `.offset/` ~ dataType ~ `.sizeof;
         for (uint k = 0; k < ` ~ accesor ~ `.count; k++)
         {
             for (int l = 0; l < ` ~ numComp ~ `; l++)
@@ -4609,7 +4571,7 @@ private Model LoadGLTF(const(char)* fileName)
         }
     }`;
 
-    Model model = { 0 };
+    Model model = Model.init; // { 0 };
 
     // glTF file loading
     uint dataSize = 0;
@@ -4618,26 +4580,26 @@ private Model LoadGLTF(const(char)* fileName)
     if (fileData == null) return model;
 
     // glTF data loading
-    cgltf_options options = { 0 };
+    cgltf_options options = cgltf_options.init; // { 0 };
     cgltf_data* data = null;
     cgltf_result result = cgltf_parse(&options, fileData, dataSize, &data);
 
     if (result == cgltf_result_success)
     {
-        if (data.file_type == cgltf_file_type_glb) TRACELOG(LOG_INFO, "MODEL: [%s] Model basic data (glb) loaded successfully", fileName);
-        else if (data.file_type == cgltf_file_type_gltf) TRACELOG(LOG_INFO, "MODEL: [%s] Model basic data (glTF) loaded successfully", fileName);
-        else TRACELOG(LOG_WARNING, "MODEL: [%s] Model format not recognized", fileName);
+        if (data.file_type == cgltf_file_type_glb) TRACELOG(TraceLogLevel.LOG_INFO, "MODEL: [%s] Model basic data (glb) loaded successfully", fileName);
+        else if (data.file_type == cgltf_file_type_gltf) TRACELOG(TraceLogLevel.LOG_INFO, "MODEL: [%s] Model basic data (glTF) loaded successfully", fileName);
+        else TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Model format not recognized", fileName);
 
-        TRACELOG(LOG_INFO, "    > Meshes count: %i", data.meshes_count);
-        TRACELOG(LOG_INFO, "    > Materials count: %i (+1 default)", data.materials_count);
-        TRACELOG(LOG_DEBUG, "    > Buffers count: %i", data.buffers_count);
-        TRACELOG(LOG_DEBUG, "    > Images count: %i", data.images_count);
-        TRACELOG(LOG_DEBUG, "    > Textures count: %i", data.textures_count);
+        TRACELOG(TraceLogLevel.LOG_INFO, "    > Meshes count: %i", data.meshes_count);
+        TRACELOG(TraceLogLevel.LOG_INFO, "    > Materials count: %i (+1 default)", data.materials_count);
+        TRACELOG(TraceLogLevel.LOG_DEBUG, "    > Buffers count: %i", data.buffers_count);
+        TRACELOG(TraceLogLevel.LOG_DEBUG, "    > Images count: %i", data.images_count);
+        TRACELOG(TraceLogLevel.LOG_DEBUG, "    > Textures count: %i", data.textures_count);
 
         // Force reading data buffers (fills buffer_view->buffer->data)
         // NOTE: If an uri is defined to base64 data or external path, it's automatically loaded -> TODO: Verify this assumption
         result = cgltf_load_buffers(&options, data, fileName);
-        if (result != cgltf_result_success) TRACELOG(LOG_INFO, "MODEL: [%s] Failed to load mesh/material buffers", fileName);
+        if (result != cgltf_result_success) TRACELOG(TraceLogLevel.LOG_INFO, "MODEL: [%s] Failed to load mesh/material buffers", fileName);
 
         int primitivesCount = 0;
         // NOTE: We will load every primitive in the glTF as a separate raylib mesh
@@ -4645,16 +4607,16 @@ private Model LoadGLTF(const(char)* fileName)
 
         // Load our model data: meshes and materials
         model.meshCount = primitivesCount;
-        model.meshes = RL_CALLOC(model.meshCount, Mesh.sizeof);
+        model.meshes = cast(typeof(model.meshes))RL_CALLOC(model.meshCount, Mesh.sizeof);
         for (int i = 0; i < model.meshCount; i++) model.meshes[i].vboId = cast(uint*)RL_CALLOC(MAX_MESH_VERTEX_BUFFERS, uint.sizeof);
 
         // NOTE: We keep an extra slot for default material, in case some mesh requires it
         model.materialCount = cast(int)data.materials_count + 1;
-        model.materials = RL_CALLOC(model.materialCount, Material.sizeof);
+        model.materials = cast(typeof(model.materials))RL_CALLOC(model.materialCount, Material.sizeof);
         model.materials[0] = LoadMaterialDefault();     // Load default material (index: 0)
 
         // Load mesh-material indices, by default all meshes are mapped to material index: 0
-        model.meshMaterial = RL_CALLOC(model.meshCount, int.sizeof);
+        model.meshMaterial = cast(typeof(model.meshMaterial))RL_CALLOC(model.meshCount, int.sizeof);
 
         // Load materials data
         //----------------------------------------------------------------------------------------------------
@@ -4673,15 +4635,15 @@ private Model LoadGLTF(const(char)* fileName)
                     Image imAlbedo = LoadImageFromCgltfImage(data.materials[i].pbr_metallic_roughness.base_color_texture.texture.image, texPath);
                     if (imAlbedo.data != null)
                     {
-                        model.materials[j].maps[MATERIAL_MAP_ALBEDO].texture = LoadTextureFromImage(imAlbedo);
+                        model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_ALBEDO].texture = LoadTextureFromImage(imAlbedo);
                         UnloadImage(imAlbedo);
                     }
 
                     // Load base color factor (tint)
-                    model.materials[j].maps[MATERIAL_MAP_ALBEDO].color.r = cast(ubyte)(data.materials[i].pbr_metallic_roughness.base_color_factor[0]*255);
-                    model.materials[j].maps[MATERIAL_MAP_ALBEDO].color.g = cast(ubyte)(data.materials[i].pbr_metallic_roughness.base_color_factor[1]*255);
-                    model.materials[j].maps[MATERIAL_MAP_ALBEDO].color.b = cast(ubyte)(data.materials[i].pbr_metallic_roughness.base_color_factor[2]*255);
-                    model.materials[j].maps[MATERIAL_MAP_ALBEDO].color.a = cast(ubyte)(data.materials[i].pbr_metallic_roughness.base_color_factor[3]*255);
+                    model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_ALBEDO].color.r = cast(ubyte)(data.materials[i].pbr_metallic_roughness.base_color_factor[0]*255);
+                    model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_ALBEDO].color.g = cast(ubyte)(data.materials[i].pbr_metallic_roughness.base_color_factor[1]*255);
+                    model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_ALBEDO].color.b = cast(ubyte)(data.materials[i].pbr_metallic_roughness.base_color_factor[2]*255);
+                    model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_ALBEDO].color.a = cast(ubyte)(data.materials[i].pbr_metallic_roughness.base_color_factor[3]*255);
                 }
 
                 // Load metallic/roughness texture
@@ -4690,16 +4652,16 @@ private Model LoadGLTF(const(char)* fileName)
                     Image imMetallicRoughness = LoadImageFromCgltfImage(data.materials[i].pbr_metallic_roughness.metallic_roughness_texture.texture.image, texPath);
                     if (imMetallicRoughness.data != null)
                     {
-                        model.materials[j].maps[MATERIAL_MAP_ROUGHNESS].texture = LoadTextureFromImage(imMetallicRoughness);
+                        model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_ROUGHNESS].texture = LoadTextureFromImage(imMetallicRoughness);
                         UnloadImage(imMetallicRoughness);
                     }
 
                     // Load metallic/roughness material properties
                     float roughness = data.materials[i].pbr_metallic_roughness.roughness_factor;
-                    model.materials[j].maps[MATERIAL_MAP_ROUGHNESS].value = roughness;
+                    model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_ROUGHNESS].value = roughness;
 
                     float metallic = data.materials[i].pbr_metallic_roughness.metallic_factor;
-                    model.materials[j].maps[MATERIAL_MAP_METALNESS].value = metallic;
+                    model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_METALNESS].value = metallic;
                 }
 
                 // Load normal texture
@@ -4708,7 +4670,7 @@ private Model LoadGLTF(const(char)* fileName)
                     Image imNormal = LoadImageFromCgltfImage(data.materials[i].normal_texture.texture.image, texPath);
                     if (imNormal.data != null)
                     {
-                        model.materials[j].maps[MATERIAL_MAP_NORMAL].texture = LoadTextureFromImage(imNormal);
+                        model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_NORMAL].texture = LoadTextureFromImage(imNormal);
                         UnloadImage(imNormal);
                     }
                 }
@@ -4719,7 +4681,7 @@ private Model LoadGLTF(const(char)* fileName)
                     Image imOcclusion = LoadImageFromCgltfImage(data.materials[i].occlusion_texture.texture.image, texPath);
                     if (imOcclusion.data != null)
                     {
-                        model.materials[j].maps[MATERIAL_MAP_OCCLUSION].texture = LoadTextureFromImage(imOcclusion);
+                        model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_OCCLUSION].texture = LoadTextureFromImage(imOcclusion);
                         UnloadImage(imOcclusion);
                     }
                 }
@@ -4730,15 +4692,15 @@ private Model LoadGLTF(const(char)* fileName)
                     Image imEmissive = LoadImageFromCgltfImage(data.materials[i].emissive_texture.texture.image, texPath);
                     if (imEmissive.data != null)
                     {
-                        model.materials[j].maps[MATERIAL_MAP_EMISSION].texture = LoadTextureFromImage(imEmissive);
+                        model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_EMISSION].texture = LoadTextureFromImage(imEmissive);
                         UnloadImage(imEmissive);
                     }
 
                     // Load emissive color factor
-                    model.materials[j].maps[MATERIAL_MAP_EMISSION].color.r = cast(ubyte)(data.materials[i].emissive_factor[0]*255);
-                    model.materials[j].maps[MATERIAL_MAP_EMISSION].color.g = cast(ubyte)(data.materials[i].emissive_factor[1]*255);
-                    model.materials[j].maps[MATERIAL_MAP_EMISSION].color.b = cast(ubyte)(data.materials[i].emissive_factor[2]*255);
-                    model.materials[j].maps[MATERIAL_MAP_EMISSION].color.a = 255;
+                    model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_EMISSION].color.r = cast(ubyte)(data.materials[i].emissive_factor[0]*255);
+                    model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_EMISSION].color.g = cast(ubyte)(data.materials[i].emissive_factor[1]*255);
+                    model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_EMISSION].color.b = cast(ubyte)(data.materials[i].emissive_factor[2]*255);
+                    model.materials[j].maps[MaterialMapIndex.MATERIAL_MAP_EMISSION].color.a = 255;
                 }
             }
 
@@ -4774,12 +4736,12 @@ private Model LoadGLTF(const(char)* fileName)
                         {
                             // Init raylib mesh vertices to copy glTF attribute data
                             model.meshes[meshIndex].vertexCount = cast(int)attribute.count;
-                            model.meshes[meshIndex].vertices = RL_MALLOC(attribute.count*3*float.sizeof);
+                            model.meshes[meshIndex].vertices = cast(typeof(model.meshes[meshIndex].vertices))RL_MALLOC(attribute.count*3*int(float.sizeof));
 
                             // Load 3 components of float data type into mesh.vertices
-                            mixin(LOAD_ATTRIBUTE!(`attribute`, `3`, `float`, `model.meshes[meshIndex].vertices`))
+                            mixin(LOAD_ATTRIBUTE!(`attribute`, `3`, `float`, `model.meshes[meshIndex].vertices`));
                         }
-                        else TRACELOG(LOG_WARNING, "MODEL: [%s] Vertices attribute data format not supported, use vec3 float", fileName);
+                        else TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Vertices attribute data format not supported, use vec3 float", fileName);
                     }
                     else if (data.meshes[i].primitives[p].attributes[j].type == cgltf_attribute_type_normal)   // NORMAL
                     {
@@ -4788,12 +4750,12 @@ private Model LoadGLTF(const(char)* fileName)
                         if ((attribute.component_type == cgltf_component_type_r_32f) && (attribute.type == cgltf_type_vec3))
                         {
                             // Init raylib mesh normals to copy glTF attribute data
-                            model.meshes[meshIndex].normals = RL_MALLOC(attribute.count*3*float.sizeof);
+                            model.meshes[meshIndex].normals = cast(typeof(model.meshes[meshIndex].normals))RL_MALLOC(attribute.count*3*int(float.sizeof));
 
                             // Load 3 components of float data type into mesh.normals
-                            mixin(LOAD_ATTRIBUTE!(`attribute`, `3`, `float`, `model.meshes[meshIndex].normals`))
+                            mixin(LOAD_ATTRIBUTE!(`attribute`, `3`, `float`, `model.meshes[meshIndex].normals`));
                         }
-                        else TRACELOG(LOG_WARNING, "MODEL: [%s] Normal attribute data format not supported, use vec3 float", fileName);
+                        else TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Normal attribute data format not supported, use vec3 float", fileName);
                     }
                     else if (data.meshes[i].primitives[p].attributes[j].type == cgltf_attribute_type_tangent)   // TANGENT
                     {
@@ -4802,12 +4764,12 @@ private Model LoadGLTF(const(char)* fileName)
                         if ((attribute.component_type == cgltf_component_type_r_32f) && (attribute.type == cgltf_type_vec4))
                         {
                             // Init raylib mesh tangent to copy glTF attribute data
-                            model.meshes[meshIndex].tangents = RL_MALLOC(attribute.count*4*float.sizeof);
+                            model.meshes[meshIndex].tangents = cast(typeof(model.meshes[meshIndex].tangents))RL_MALLOC(attribute.count*4*int(float.sizeof));
 
                             // Load 4 components of float data type into mesh.tangents
-                            mixin(LOAD_ATTRIBUTE!(`attribute`, `4`, `float`, `model.meshes[meshIndex].tangents`))
+                            mixin(LOAD_ATTRIBUTE!(`attribute`, `4`, `float`, `model.meshes[meshIndex].tangents`));
                         }
-                        else TRACELOG(LOG_WARNING, "MODEL: [%s] Tangent attribute data format not supported, use vec4 float", fileName);
+                        else TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Tangent attribute data format not supported, use vec4 float", fileName);
                     }
                     else if (data.meshes[i].primitives[p].attributes[j].type == cgltf_attribute_type_texcoord) // TEXCOORD_0
                     {
@@ -4818,12 +4780,12 @@ private Model LoadGLTF(const(char)* fileName)
                         if ((attribute.component_type == cgltf_component_type_r_32f) && (attribute.type == cgltf_type_vec2))
                         {
                             // Init raylib mesh texcoords to copy glTF attribute data
-                            model.meshes[meshIndex].texcoords = RL_MALLOC(attribute.count*2*float.sizeof);
+                            model.meshes[meshIndex].texcoords = cast(typeof(model.meshes[meshIndex].texcoords))RL_MALLOC(attribute.count*2*int(float.sizeof));
 
                             // Load 3 components of float data type into mesh.texcoords
-                            mixin(LOAD_ATTRIBUTE!(`attribute`, `2`, `float`, `model.meshes[meshIndex].texcoords`))
+                            mixin(LOAD_ATTRIBUTE!(`attribute`, `2`, `float`, `model.meshes[meshIndex].texcoords`));
                         }
-                        else TRACELOG(LOG_WARNING, "MODEL: [%s] Texcoords attribute data format not supported, use vec2 float", fileName);
+                        else TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Texcoords attribute data format not supported, use vec2 float", fileName);
                     }
                     else if (data.meshes[i].primitives[p].attributes[j].type == cgltf_attribute_type_color)    // COLOR_0
                     {
@@ -4834,19 +4796,19 @@ private Model LoadGLTF(const(char)* fileName)
                         if ((attribute.component_type == cgltf_component_type_r_8u) && (attribute.type == cgltf_type_vec4))
                         {
                             // Init raylib mesh color to copy glTF attribute data
-                            model.meshes[meshIndex].colors = RL_MALLOC(attribute.count*4*ubyte.sizeof);
+                            model.meshes[meshIndex].colors = cast(typeof(model.meshes[meshIndex].colors))RL_MALLOC(attribute.count*4*int(ubyte.sizeof));
 
                             // Load 4 components of unsigned char data type into mesh.colors
-                            mixin(LOAD_ATTRIBUTE!(`attribute`, `4`, `unsigned` `char_`, `model.meshes[meshIndex].colors`))
+                            mixin(LOAD_ATTRIBUTE!(`attribute`, `4`, `ubyte`, `model.meshes[meshIndex].colors`));
                         }
                         else if ((attribute.component_type == cgltf_component_type_r_16u) && (attribute.type == cgltf_type_vec4))
                         {
                             // Init raylib mesh color to copy glTF attribute data
-                            model.meshes[meshIndex].colors = RL_MALLOC(attribute.count*4*ubyte.sizeof);
+                            model.meshes[meshIndex].colors = cast(typeof(model.meshes[meshIndex].colors))RL_MALLOC(attribute.count*4*int(ubyte.sizeof));
 
                             // Load data into a temp buffer to be converted to raylib data type
-                            ushort* temp = RL_MALLOC(attribute.count*4*ushort.sizeof);
-                            mixin(LOAD_ATTRIBUTE!(`attribute`, `4`, `unsigned` `short`, `temp`));
+                            ushort* temp = cast(ushort*)RL_MALLOC(attribute.count*4*int(ushort.sizeof));
+                            mixin(LOAD_ATTRIBUTE!(`attribute`, `4`, `ushort`, `temp`));;
 
                             // Convert data to raylib color data type (4 bytes)
                             for (int c = 0; c < attribute.count*4; c++) model.meshes[meshIndex].colors[c] = cast(ubyte)((cast(float)temp[c]/65535.0f)*255.0f);
@@ -4856,10 +4818,10 @@ private Model LoadGLTF(const(char)* fileName)
                         else if ((attribute.component_type == cgltf_component_type_r_32f) && (attribute.type == cgltf_type_vec4))
                         {
                             // Init raylib mesh color to copy glTF attribute data
-                            model.meshes[meshIndex].colors = RL_MALLOC(attribute.count*4*ubyte.sizeof);
+                            model.meshes[meshIndex].colors = cast(typeof(model.meshes[meshIndex].colors))RL_MALLOC(attribute.count*4*int(ubyte.sizeof));
 
                             // Load data into a temp buffer to be converted to raylib data type
-                            float* temp = RL_MALLOC(attribute.count*4*float.sizeof);
+                            float* temp = cast(float*)RL_MALLOC(attribute.count*4*int(float.sizeof));
                             mixin(LOAD_ATTRIBUTE!(`attribute`, `4`, `float`, `temp`));
 
                             // Convert data to raylib color data type (4 bytes), we expect the color data normalized
@@ -4867,7 +4829,7 @@ private Model LoadGLTF(const(char)* fileName)
 
                             RL_FREE(temp);
                         }
-                        else TRACELOG(LOG_WARNING, "MODEL: [%s] Color attribute data format not supported", fileName);
+                        else TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Color attribute data format not supported", fileName);
                     }
 
                     // NOTE: Attributes related to animations are processed separately
@@ -4883,28 +4845,28 @@ private Model LoadGLTF(const(char)* fileName)
                     if (attribute.component_type == cgltf_component_type_r_16u)
                     {
                         // Init raylib mesh indices to copy glTF attribute data
-                        model.meshes[meshIndex].indices = RL_MALLOC(attribute.count*ushort.sizeof);
+                        model.meshes[meshIndex].indices = cast(typeof(model.meshes[meshIndex].indices))RL_MALLOC(attribute.count*int(ushort.sizeof));
 
                         // Load unsigned short data type into mesh.indices
-                        mixin(LOAD_ATTRIBUTE!(`attribute`, `1`, `unsigned` `short`, `model.meshes[meshIndex].indices`))
+                        mixin(LOAD_ATTRIBUTE!(`attribute`, `1`, `ushort`, `model.meshes[meshIndex].indices`));
                     }
                     else if (attribute.component_type == cgltf_component_type_r_32u)
                     {
                         // Init raylib mesh indices to copy glTF attribute data
-                        model.meshes[meshIndex].indices = RL_MALLOC(attribute.count*ushort.sizeof);
+                        model.meshes[meshIndex].indices = cast(typeof(model.meshes[meshIndex].indices))RL_MALLOC(attribute.count*int(ushort.sizeof));
 
                         // Load data into a temp buffer to be converted to raylib data type
-                        uint* temp = RL_MALLOC(attribute.count*uint.sizeof);
-                        mixin(LOAD_ATTRIBUTE!(`attribute`, `1`, `unsigned` `int`, `temp`));
+                        uint* temp = cast(uint*)RL_MALLOC(attribute.count*uint.sizeof);
+                        mixin(LOAD_ATTRIBUTE!(`attribute`, `1`, `uint`, `temp`));
 
                         // Convert data to raylib indices data type (unsigned short)
                         for (int d = 0; d < attribute.count; d++) model.meshes[meshIndex].indices[d] = cast(ushort)temp[d];
 
-                        TRACELOG(LOG_WARNING, "MODEL: [%s] Indices data converted from u32 to u16, possible loss of data", fileName);
+                        TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Indices data converted from u32 to u16, possible loss of data", fileName);
 
                         RL_FREE(temp);
                     }
-                    else TRACELOG(LOG_WARNING, "MODEL: [%s] Indices data format not supported, use u16", fileName);
+                    else TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Indices data format not supported, use u16", fileName);
                 }
                 else model.meshes[meshIndex].triangleCount = model.meshes[meshIndex].vertexCount/3;    // Unindexed mesh
 
@@ -4930,7 +4892,7 @@ private Model LoadGLTF(const(char)* fileName)
         // Free all cgltf loaded data
         cgltf_free(data);
     }
-    else TRACELOG(LOG_WARNING, "MODEL: [%s] Failed to load glTF data", fileName);
+    else TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Failed to load glTF data", fileName);
 
     // WARNING: cgltf requires the file pointer available while reading data
     UnloadFileData(fileData);
@@ -4939,11 +4901,11 @@ private Model LoadGLTF(const(char)* fileName)
 }
 }
 
-version (SUPPORT_FILEFORMAT_VOX) {
+static if (SUPPORT_FILEFORMAT_VOX) {
 // Load VOX (MagicaVoxel) mesh data
 private Model LoadVOX(const(char)* fileName)
 {
-    Model model = { 0 };
+    Model model = Model.init; // { 0 };
 
     int nbvertices = 0;
     int meshescount = 0;
@@ -4952,9 +4914,9 @@ private Model LoadVOX(const(char)* fileName)
 
     // Read vox file into buffer
     fileData = LoadFileData(fileName, &fileSize);
-    if (fileData == 0)
+    if (fileData is null)
     {
-        TRACELOG(LOG_WARNING, "MODEL: [%s] Failed to load VOX file", fileName);
+        TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Failed to load VOX file", fileName);
         return model;
     }
 
@@ -4967,7 +4929,7 @@ private Model LoadVOX(const(char)* fileName)
         // Error
         UnloadFileData(fileData);
 
-        TRACELOG(LOG_WARNING, "MODEL: [%s] Failed to load VOX data", fileName);
+        TRACELOG(TraceLogLevel.LOG_WARNING, "MODEL: [%s] Failed to load VOX data", fileName);
         return model;
     }
     else
@@ -4976,7 +4938,7 @@ private Model LoadVOX(const(char)* fileName)
         nbvertices = voxarray.vertices.used;
         meshescount = 1 + (nbvertices/65536);
 
-        TRACELOG(LOG_INFO, "MODEL: [%s] VOX data loaded successfully : %i vertices/%i meshes", fileName, nbvertices, meshescount);
+        TRACELOG(TraceLogLevel.LOG_INFO, "MODEL: [%s] VOX data loaded successfully : %i vertices/%i meshes", fileName, nbvertices, meshescount);
     }
 
     // Build models from meshes
@@ -5011,21 +4973,21 @@ private Model LoadVOX(const(char)* fileName)
         // Copy vertices
         pmesh.vertexCount = cast(int)fmin(verticesMax, verticesRemain);
 
-        size = pmesh.vertexCount*float.sizeof *3;
-        pmesh.vertices = RL_MALLOC(size);
+        size = pmesh.vertexCount*int(float.sizeof) *3;
+        pmesh.vertices = cast(typeof(pmesh.vertices))RL_MALLOC(size);
         memcpy(pmesh.vertices, pvertices, size);
 
         // Copy indices
         // TODO: Compute globals indices array
-        size = voxarray.indices.used*ushort.sizeof;
-        pmesh.indices = RL_MALLOC(size);
+        size = voxarray.indices.used*int(ushort.sizeof);
+        pmesh.indices = cast(typeof(pmesh.indices))RL_MALLOC(size);
         memcpy(pmesh.indices, pindices, size);
 
         pmesh.triangleCount = (pmesh.vertexCount/4)*2;
 
         // Copy colors
-        size = pmesh.vertexCount*Color.sizeof;
-        pmesh.colors = RL_MALLOC(size);
+        size = pmesh.vertexCount*int(Color.sizeof);
+        pmesh.colors = cast(typeof(pmesh.colors))RL_MALLOC(size);
         memcpy(pmesh.colors, pcolors, size);
 
         // First material index
@@ -5043,4 +5005,3 @@ private Model LoadVOX(const(char)* fileName)
     return model;
 }
 }
-

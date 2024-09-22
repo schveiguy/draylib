@@ -453,7 +453,7 @@ ifeq ($(PLATFORM),PLATFORM_DESKTOP)
     endif
 endif
 ifeq ($(RAYLIB_MODULE_MODELS),TRUE)
-    OBJS += rmodels.o
+    OBJS += modelfiles_bin.o
 endif
 ifeq ($(RAYLIB_MODULE_AUDIO),TRUE)
     OBJS += raudio.o

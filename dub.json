@@ -11,7 +11,8 @@
 	"name": "draylib",
         "buildOptions" : [ "betterC" ],
 	"extraDependencyFiles": [ "raylib/*.o" ],
+    "versions": ["GRAPHICS_API_OPENGL_33"],
 	"dflags": [
-"raylibc/raudio.o", "raylibc/rglfw.o", "raylibc/rcore.o", "raylibc/rmodels.o", "raylibc/stb_truetype_bin.o", "raylibc/stb_image_bin.o"
+"raylibc/raudio.o", "raylibc/rglfw.o", "raylibc/rcore.o", "raylibc/stb_truetype_bin.o", "raylibc/stb_image_bin.o", "raylibc/modelfiles_bin.o"
 	]
 }

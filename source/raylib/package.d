@@ -719,11 +719,11 @@ enum MaterialMapIndex
     MATERIAL_MAP_CUBEMAP = 7, // Cubemap material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
     MATERIAL_MAP_IRRADIANCE = 8, // Irradiance material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
     MATERIAL_MAP_PREFILTER = 9, // Prefilter material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
-    MATERIAL_MAP_BRDF = 10 // Brdf material
+    MATERIAL_MAP_BRDF = 10, // Brdf material
+    MATERIAL_MAP_DIFFUSE = MATERIAL_MAP_ALBEDO,
+    MATERIAL_MAP_SPECULAR = MATERIAL_MAP_METALNESS
 }
 
-enum MATERIAL_MAP_DIFFUSE = MaterialMapIndex.MATERIAL_MAP_ALBEDO;
-enum MATERIAL_MAP_SPECULAR = MaterialMapIndex.MATERIAL_MAP_METALNESS;
 
 // Shader location index
 enum ShaderLocationIndex
