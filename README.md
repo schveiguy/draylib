@@ -33,6 +33,7 @@ draylib is currently built with `betterC`. Once all files are ported, we will re
 * `raylib/rutils.d` is ported completely
 * `raylib/rtext.d` is ported completely, and relies on importC headers for `stb_truetype` to work (see `stb_truetype_import.c` in the importc directory)
 * `raylib/rshapes.d` is ported completely
+* `raylib/rmodels.d` is ported completely, and relies on importC headers for model file support (see `modelfiles_import.c` in the importc directory)
 
 In the external directory, the following modules are included:
 
