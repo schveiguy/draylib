@@ -1,5 +1,5 @@
 module raylib.rgestures;
-@nogc nothrow:
+//@nogc nothrow:
 extern(C): __gshared:
 
 private template HasVersion(string versionId) {
@@ -103,6 +103,7 @@ version(Windows) {
     import core.stdc.math;                   // Required for: sqrtf(), atan2f()
 } else version (OSX) {                  // macOS also defines __MACH__
     import mach_import;
+    import core.stdc.math;                   // Required for: sqrtf(), atan2f()
 }
 
 //----------------------------------------------------------------------------------
@@ -161,7 +162,7 @@ struct GesturesData {
 //----------------------------------------------------------------------------------
 private GesturesData GESTURES = {
     Touch:  {firstId: -1},
-    current: GESTURE_NONE,        // No current gesture detected
+    current: Gesture.GESTURE_NONE,        // No current gesture detected
     enabledFlags: 0b0000001111111111  // All gestures supported by default
 };
 
@@ -201,16 +202,16 @@ void ProcessGestureEvent(GestureEvent event)
         {
             GESTURES.Touch.tapCounter++;    // Tap counter
 
-            // Detect GESTURE_DOUBLE_TAP
-            if ((GESTURES.current == GESTURE_NONE) && (GESTURES.Touch.tapCounter >= 2) && ((rgGetCurrentTime() - GESTURES.Touch.eventTime) < TAP_TIMEOUT) && (rgVector2Distance(GESTURES.Touch.downPositionA, event.position[0]) < DOUBLETAP_RANGE))
+            // Detect Gesture.GESTURE_DOUBLE_TAP
+            if ((GESTURES.current == Gesture.GESTURE_NONE) && (GESTURES.Touch.tapCounter >= 2) && ((rgGetCurrentTime() - GESTURES.Touch.eventTime) < TAP_TIMEOUT) && (rgVector2Distance(GESTURES.Touch.downPositionA, event.position[0]) < DOUBLETAP_RANGE))
             {
-                GESTURES.current = GESTURE_DOUBLETAP;
+                GESTURES.current = Gesture.GESTURE_DOUBLETAP;
                 GESTURES.Touch.tapCounter = 0;
             }
-            else    // Detect GESTURE_TAP
+            else    // Detect Gesture.GESTURE_TAP
             {
                 GESTURES.Touch.tapCounter = 1;
-                GESTURES.current = GESTURE_TAP;
+                GESTURES.current = Gesture.GESTURE_TAP;
             }
 
             GESTURES.Touch.downPositionA = event.position[0];
@@ -225,7 +226,7 @@ void ProcessGestureEvent(GestureEvent event)
         }
         else if (event.touchAction == TOUCH_ACTION_UP)
         {
-            if (GESTURES.current == GESTURE_DRAG) GESTURES.Touch.upPosition = event.position[0];
+            if (GESTURES.current == Gesture.GESTURE_DRAG) GESTURES.Touch.upPosition = event.position[0];
 
             // NOTE: GESTURES.Drag.intensity dependend on the resolution of the screen
             GESTURES.Drag.distance = rgVector2Distance(GESTURES.Touch.downPositionA, GESTURES.Touch.upPosition);
@@ -233,17 +234,17 @@ void ProcessGestureEvent(GestureEvent event)
 
             GESTURES.Swipe.start = false;
 
-            // Detect GESTURE_SWIPE
+            // Detect Gesture.GESTURE_SWIPE
             if ((GESTURES.Drag.intensity > FORCE_TO_SWIPE) && (GESTURES.Touch.firstId == event.pointId[0]))
             {
                 // NOTE: Angle should be inverted in Y
                 GESTURES.Drag.angle = 360.0f - rgVector2Angle(GESTURES.Touch.downPositionA, GESTURES.Touch.upPosition);
 
-                if ((GESTURES.Drag.angle < 30) || (GESTURES.Drag.angle > 330)) GESTURES.current = GESTURE_SWIPE_RIGHT;        // Right
-                else if ((GESTURES.Drag.angle > 30) && (GESTURES.Drag.angle < 120)) GESTURES.current = GESTURE_SWIPE_UP;      // Up
-                else if ((GESTURES.Drag.angle > 120) && (GESTURES.Drag.angle < 210)) GESTURES.current = GESTURE_SWIPE_LEFT;   // Left
-                else if ((GESTURES.Drag.angle > 210) && (GESTURES.Drag.angle < 300)) GESTURES.current = GESTURE_SWIPE_DOWN;   // Down
-                else GESTURES.current = GESTURE_NONE;
+                if ((GESTURES.Drag.angle < 30) || (GESTURES.Drag.angle > 330)) GESTURES.current = Gesture.GESTURE_SWIPE_RIGHT;        // Right
+                else if ((GESTURES.Drag.angle > 30) && (GESTURES.Drag.angle < 120)) GESTURES.current = Gesture.GESTURE_SWIPE_UP;      // Up
+                else if ((GESTURES.Drag.angle > 120) && (GESTURES.Drag.angle < 210)) GESTURES.current = Gesture.GESTURE_SWIPE_LEFT;   // Left
+                else if ((GESTURES.Drag.angle > 210) && (GESTURES.Drag.angle < 300)) GESTURES.current = Gesture.GESTURE_SWIPE_DOWN;   // Down
+                else GESTURES.current = Gesture.GESTURE_NONE;
             }
             else
             {
@@ -251,7 +252,7 @@ void ProcessGestureEvent(GestureEvent event)
                 GESTURES.Drag.intensity = 0.0f;
                 GESTURES.Drag.angle = 0.0f;
 
-                GESTURES.current = GESTURE_NONE;
+                GESTURES.current = Gesture.GESTURE_NONE;
             }
 
             GESTURES.Touch.downDragPosition = Vector2( 0.0f, 0.0f );
@@ -259,7 +260,7 @@ void ProcessGestureEvent(GestureEvent event)
         }
         else if (event.touchAction == TOUCH_ACTION_MOVE)
         {
-            if (GESTURES.current == GESTURE_DRAG) GESTURES.Touch.eventTime = rgGetCurrentTime();
+            if (GESTURES.current == Gesture.GESTURE_DRAG) GESTURES.Touch.eventTime = rgGetCurrentTime();
 
             if (!GESTURES.Swipe.start)
             {
@@ -269,17 +270,17 @@ void ProcessGestureEvent(GestureEvent event)
 
             GESTURES.Touch.moveDownPositionA = event.position[0];
 
-            if (GESTURES.current == GESTURE_HOLD)
+            if (GESTURES.current == Gesture.GESTURE_HOLD)
             {
                 if (GESTURES.Hold.resetRequired) GESTURES.Touch.downPositionA = event.position[0];
 
                 GESTURES.Hold.resetRequired = false;
 
-                // Detect GESTURE_DRAG
+                // Detect Gesture.GESTURE_DRAG
                 if (rgVector2Distance(GESTURES.Touch.downPositionA, GESTURES.Touch.moveDownPositionA) >= MINIMUM_DRAG)
                 {
                     GESTURES.Touch.eventTime = rgGetCurrentTime();
-                    GESTURES.current = GESTURE_DRAG;
+                    GESTURES.current = Gesture.GESTURE_DRAG;
                 }
             }
 
@@ -299,7 +300,7 @@ void ProcessGestureEvent(GestureEvent event)
             GESTURES.Pinch.vector.x = GESTURES.Touch.downPositionB.x - GESTURES.Touch.downPositionA.x;
             GESTURES.Pinch.vector.y = GESTURES.Touch.downPositionB.y - GESTURES.Touch.downPositionA.y;
 
-            GESTURES.current = GESTURE_HOLD;
+            GESTURES.current = Gesture.GESTURE_HOLD;
             GESTURES.Hold.timeDuration = rgGetCurrentTime();
         }
         else if (event.touchAction == TOUCH_ACTION_MOVE)
@@ -317,12 +318,12 @@ void ProcessGestureEvent(GestureEvent event)
 
             if ((rgVector2Distance(GESTURES.Touch.downPositionA, GESTURES.Touch.moveDownPositionA) >= MINIMUM_PINCH) || (rgVector2Distance(GESTURES.Touch.downPositionB, GESTURES.Touch.moveDownPositionB) >= MINIMUM_PINCH))
             {
-                if ((rgVector2Distance(GESTURES.Touch.moveDownPositionA, GESTURES.Touch.moveDownPositionB) - GESTURES.Pinch.distance) < 0) GESTURES.current = GESTURE_PINCH_IN;
-                else GESTURES.current = GESTURE_PINCH_OUT;
+                if ((rgVector2Distance(GESTURES.Touch.moveDownPositionA, GESTURES.Touch.moveDownPositionB) - GESTURES.Pinch.distance) < 0) GESTURES.current = Gesture.GESTURE_PINCH_IN;
+                else GESTURES.current = Gesture.GESTURE_PINCH_OUT;
             }
             else
             {
-                GESTURES.current = GESTURE_HOLD;
+                GESTURES.current = Gesture.GESTURE_HOLD;
                 GESTURES.Hold.timeDuration = rgGetCurrentTime();
             }
 
@@ -336,7 +337,7 @@ void ProcessGestureEvent(GestureEvent event)
             GESTURES.Pinch.vector = Vector2( 0.0f, 0.0f );
             GESTURES.Touch.pointCount = 0;
 
-            GESTURES.current = GESTURE_NONE;
+            GESTURES.current = Gesture.GESTURE_NONE;
         }
     }
     else if (GESTURES.Touch.pointCount > 2)     // More than two touch points
@@ -350,24 +351,24 @@ void UpdateGestures()
 {
     // NOTE: Gestures are processed through system callbacks on touch events
 
-    // Detect GESTURE_HOLD
-    if (((GESTURES.current == GESTURE_TAP) || (GESTURES.current == GESTURE_DOUBLETAP)) && (GESTURES.Touch.pointCount < 2))
+    // Detect Gesture.GESTURE_HOLD
+    if (((GESTURES.current == Gesture.GESTURE_TAP) || (GESTURES.current == Gesture.GESTURE_DOUBLETAP)) && (GESTURES.Touch.pointCount < 2))
     {
-        GESTURES.current = GESTURE_HOLD;
+        GESTURES.current = Gesture.GESTURE_HOLD;
         GESTURES.Hold.timeDuration = rgGetCurrentTime();
     }
 
-    if (((rgGetCurrentTime() - GESTURES.Touch.eventTime) > TAP_TIMEOUT) && (GESTURES.current == GESTURE_DRAG) && (GESTURES.Touch.pointCount < 2))
+    if (((rgGetCurrentTime() - GESTURES.Touch.eventTime) > TAP_TIMEOUT) && (GESTURES.current == Gesture.GESTURE_DRAG) && (GESTURES.Touch.pointCount < 2))
     {
-        GESTURES.current = GESTURE_HOLD;
+        GESTURES.current = Gesture.GESTURE_HOLD;
         GESTURES.Hold.timeDuration = rgGetCurrentTime();
         GESTURES.Hold.resetRequired = true;
     }
 
-    // Detect GESTURE_NONE
-    if ((GESTURES.current == GESTURE_SWIPE_RIGHT) || (GESTURES.current == GESTURE_SWIPE_UP) || (GESTURES.current == GESTURE_SWIPE_LEFT) || (GESTURES.current == GESTURE_SWIPE_DOWN))
+    // Detect Gesture.GESTURE_NONE
+    if ((GESTURES.current == Gesture.GESTURE_SWIPE_RIGHT) || (GESTURES.current == Gesture.GESTURE_SWIPE_UP) || (GESTURES.current == Gesture.GESTURE_SWIPE_LEFT) || (GESTURES.current == Gesture.GESTURE_SWIPE_DOWN))
     {
-        GESTURES.current = GESTURE_NONE;
+        GESTURES.current = Gesture.GESTURE_NONE;
     }
 }
 
@@ -385,7 +386,7 @@ float GetGestureHoldDuration()
 
     double time = 0.0;
 
-    if (GESTURES.current == GESTURE_HOLD) time = rgGetCurrentTime() - GESTURES.Hold.timeDuration;
+    if (GESTURES.current == Gesture.GESTURE_HOLD) time = rgGetCurrentTime() - GESTURES.Hold.timeDuration;
 
     return cast(float)time;
 }
@@ -484,7 +485,7 @@ version (OSX) {
     // NOTE: OS X does not have clock_gettime(), using clock_get_time()
     clock_get_time(cclock, &now);
     mach_port_deallocate(mach_task_self(), cclock);
-    uint nowTime = cast(uint)now.tv_sec*1000000000LU + cast(uint)now.tv_nsec;     // Time in nanoseconds
+    uint nowTime = cast(uint)(now.tv_sec*1000000000LU + now.tv_nsec);     // Time in nanoseconds
 
     time = (cast(double)nowTime/1000000.0);     // Time in miliseconds
 }
