@@ -127,10 +127,10 @@
 //#define RAYMATH_IMPLEMENTATION      // Define external out-of-line implementation
 //#include "raymath.h"                // Vector3, Quaternion and Matrix functionality
 
-#if defined(SUPPORT_GESTURES_SYSTEM)
-    #define GESTURES_IMPLEMENTATION
-    #include "rgestures.h"           // Gestures detection functionality
-#endif
+//#if defined(SUPPORT_GESTURES_SYSTEM)
+    //#define GESTURES_IMPLEMENTATION
+    //#include "rgestures.h"           // Gestures detection functionality
+//#endif
 
 #if defined(SUPPORT_CAMERA_SYSTEM)
     #define CAMERA_IMPLEMENTATION
