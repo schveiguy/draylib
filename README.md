@@ -26,7 +26,7 @@ draylib is currently built with `betterC`. Once all files are ported, we will re
 
 ## Port status
 
-* `raylib.h`, `config.h`, `rlgl.h`, `rgestures.h` have all been converted automatically using dstep to the `source/raylib` package (note that `raylib.h` is converted to `raylib/package.d`).
+* `raylib.h`, `config.h`, `rlgl.h` have all been converted automatically using dstep to the `source/raylib` package (note that `raylib.h` is converted to `raylib/package.d`).
 * `raylib/rcore.d` contains the ported `rcore.c` file. `rcore.c` still exists to include some of the external C libraries that have not yet been ported.
 * `raylib/raymath.d` is completely ported and is not reliant on the C library to work.
 * `raylib/rtextures.d` is ported completely, and relies on importC headers for `stb_image` to work (see `stb_image_import.c` in the importc directory)
@@ -34,6 +34,7 @@ draylib is currently built with `betterC`. Once all files are ported, we will re
 * `raylib/rtext.d` is ported completely, and relies on importC headers for `stb_truetype` to work (see `stb_truetype_import.c` in the importc directory)
 * `raylib/rshapes.d` is ported completely
 * `raylib/rmodels.d` is ported completely, and relies on importC headers for model file support (see `modelfiles_import.c` in the importc directory)
+* `raylib/rgestures.d` is ported completely, and relies on importC headers for some OS files. These probably can eventually be ported to use core imports.
 
 In the external directory, the following modules are included:
 
